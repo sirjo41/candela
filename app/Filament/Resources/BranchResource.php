@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BranchResource\Pages;
 use App\Models\Branch;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -19,7 +21,7 @@ class BranchResource extends Resource
 {
     protected static ?string $model = Branch::class;
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
-    
+
     protected static string|\UnitEnum|null $navigationGroup = 'Store Management';
     protected static ?int $navigationSort = 2;
 
@@ -48,8 +50,8 @@ class BranchResource extends Resource
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\RestoreAction::make(),
+                EditAction::make(),
+                RestoreAction::make(),
             ]);
     }
 

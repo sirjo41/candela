@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\RedemptionResource\Pages;
 use App\Models\Redemption;
 use BackedEnum;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -45,7 +46,7 @@ class RedemptionResource extends Resource
                 TextColumn::make('redeemed_at')->dateTime()->sortable(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
             ]);
     }
 

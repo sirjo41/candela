@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\StoreResource\Pages;
 use App\Models\Store;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -46,8 +48,8 @@ class StoreResource extends Resource
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\RestoreAction::make(),
+                EditAction::make(),
+                RestoreAction::make(),
             ]);
     }
 

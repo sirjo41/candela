@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CampaignResource\Pages;
 use App\Models\Campaign;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
@@ -47,8 +49,8 @@ class CampaignResource extends Resource
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\RestoreAction::make(),
+                EditAction::make(),
+                RestoreAction::make(),
             ]);
     }
 
