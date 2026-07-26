@@ -16,37 +16,85 @@ use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class BranchResource extends Resource
 {
     protected static ?string $model = Branch::class;
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Store Management';
+    protected static string|UnitEnum|null $navigationGroup = 'Store Management';
     protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Select::make('store_id')->relationship('store', 'name')->required(),
-            TextInput::make('name')->required(),
-            TextInput::make('address'),
-            TextInput::make('phone')->tel(),
-            TextInput::make('latitude')->numeric(),
-            TextInput::make('longitude')->numeric(),
-            Toggle::make('is_active')->default(true),
-        ]);
+        return $schema
+            ->columns(2)
+            ->components([
+                Select::make('store_id')
+                    ->label('Store / المتجر')
+                    ->relationship('store', 'name')
+                    ->required(),
+
+                TextInput::make('name')
+                    ->label('Branch Name / اسم الفرع')
+                    ->required()
+                    ->maxLength(255),
+
+                TextInput::make('phone')
+                    ->label('Phone / الهاتف')
+                    ->tel(),
+
+                TextInput::make('address')
+                    ->label('Address / العنوان'),
+
+                TextInput::make('latitude')
+                    ->label('Latitude / خط العرض')
+                    ->numeric(),
+
+                TextInput::make('longitude')
+                    ->label('Longitude / خط الطول')
+                    ->numeric(),
+
+                Toggle::make('is_active')
+                    ->label('Active Status / مفعل')
+                    ->default(true)
+                    ->columnSpanFull(),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->contentGrid([
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->columns([
-                TextColumn::make('store.name')->label('Store')->sortable()->searchable(),
-                TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('address')->limit(30),
-                TextColumn::make('phone'),
-                IconColumn::make('is_active')->boolean(),
+                TextColumn::make('name')
+                    ->label('اسم الفرع')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->icon('heroicon-m-map-pin'),
+
+                TextColumn::make('store.name')
+                    ->label('المتجر')
+                    ->sortable()
+                    ->searchable()
+                    ->icon('heroicon-m-building-storefront'),
+
+                TextColumn::make('phone')
+                    ->label('الهاتف')
+                    ->icon('heroicon-m-phone'),
+
+                TextColumn::make('address')
+                    ->label('العنوان')
+                    ->limit(30),
+
+                IconColumn::make('is_active')
+                    ->label('الحالة')
+                    ->boolean(),
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([

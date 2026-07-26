@@ -22,28 +22,88 @@ class RedemptionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Select::make('coupon_id')->relationship('coupon', 'title')->disabled(),
-            Select::make('user_id')->relationship('user', 'name')->disabled(),
-            Select::make('branch_id')->relationship('branch', 'name')->disabled(),
-            TextInput::make('qr_code_hash')->disabled(),
-            TextInput::make('points_awarded')->numeric()->disabled(),
-            TextInput::make('charged_fee')->numeric()->prefix('$')->disabled(),
-            DateTimePicker::make('redeemed_at')->disabled(),
-        ]);
+        return $schema
+            ->columns(2)
+            ->components([
+                Select::make('coupon_id')
+                    ->label('Coupon / الكوبون')
+                    ->relationship('coupon', 'title')
+                    ->disabled(),
+
+                Select::make('user_id')
+                    ->label('Customer / العميل')
+                    ->relationship('user', 'name')
+                    ->disabled(),
+
+                Select::make('branch_id')
+                    ->label('Branch / الفرع')
+                    ->relationship('branch', 'name')
+                    ->disabled(),
+
+                TextInput::make('qr_code_hash')
+                    ->label('QR Code Hash / كود التفعيل')
+                    ->disabled(),
+
+                TextInput::make('points_awarded')
+                    ->label('Points Awarded / النقاط')
+                    ->numeric()
+                    ->disabled(),
+
+                TextInput::make('charged_fee')
+                    ->label('Charged Fee / الرسوم المستحقة')
+                    ->numeric()
+                    ->prefix('$')
+                    ->disabled(),
+
+                DateTimePicker::make('redeemed_at')
+                    ->label('Redemption Date / تاريخ التفعيل')
+                    ->disabled()
+                    ->columnSpanFull(),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('coupon.title')->label('Coupon')->searchable(),
-                TextColumn::make('user.name')->label('Customer')->searchable(),
-                TextColumn::make('branch.name')->label('Branch')->searchable(),
-                TextColumn::make('qr_code_hash')->label('QR Hash')->badge()->copyable(),
-                TextColumn::make('points_awarded')->label('Points'),
-                TextColumn::make('charged_fee')->money('USD')->sortable(),
-                TextColumn::make('redeemed_at')->dateTime()->sortable(),
+                TextColumn::make('coupon.title')
+                    ->label('Coupon')
+                    ->searchable()
+                    ->icon('heroicon-m-ticket'),
+
+                TextColumn::make('user.name')
+                    ->label('Customer')
+                    ->searchable()
+                    ->icon('heroicon-m-user'),
+
+                TextColumn::make('branch.name')
+                    ->label('Branch')
+                    ->searchable()
+                    ->icon('heroicon-m-map-pin'),
+
+                TextColumn::make('qr_code_hash')
+                    ->label('QR Hash')
+                    ->badge()
+                    ->copyable()
+                    ->icon('heroicon-m-qr-code'),
+
+                TextColumn::make('points_awarded')
+                    ->label('Points')
+                    ->numeric()
+                    ->badge()
+                    ->color('warning'),
+
+                TextColumn::make('charged_fee')
+                    ->label('Charged Fee')
+                    ->money('USD')
+                    ->sortable()
+                    ->icon('heroicon-m-currency-dollar'),
+
+                TextColumn::make('redeemed_at')
+                    ->label('Date')
+                    ->dateTime()
+                    ->sortable()
+                    ->icon('heroicon-m-calendar'),
             ])
             ->actions([
                 ViewAction::make(),

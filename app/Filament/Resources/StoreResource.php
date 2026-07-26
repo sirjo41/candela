@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\StoreResource\Pages;
+use App\Filament\Resources\StoreResource\RelationManagers\StoreBranchesRelationManager;
 use App\Models\Store;
 use BackedEnum;
 use Filament\Actions\EditAction;
@@ -25,32 +26,97 @@ class StoreResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('name')->required(),
-            FileUpload::make('logo')->image()->directory('stores'),
-            TextInput::make('phone')->tel()->required(),
-            TextInput::make('creation_fee_rate')->numeric()->prefix('$')->default(0),
-            TextInput::make('redemption_fee_rate')->numeric()->prefix('$')->default(0),
-            Toggle::make('is_active')->default(true),
-        ]);
+        return $schema
+            ->columns(2)
+            ->components([
+                TextInput::make('name')
+                    ->label('Store Name / اسم المتجر')
+                    ->required()
+                    ->maxLength(255),
+
+                TextInput::make('phone')
+                    ->label('Phone Number / رقم الهاتف')
+                    ->tel()
+                    ->required(),
+
+                TextInput::make('creation_fee_rate')
+                    ->label('Creation Fee Rate ($)')
+                    ->numeric()
+                    ->prefix('$')
+                    ->default(0)
+                    ->required(),
+
+                TextInput::make('redemption_fee_rate')
+                    ->label('Redemption Fee Rate ($)')
+                    ->numeric()
+                    ->prefix('$')
+                    ->default(0)
+                    ->required(),
+
+                FileUpload::make('logo')
+                    ->label('Store Logo / شعار المتجر')
+                    ->image()
+                    ->directory('stores')
+                    ->columnSpanFull(),
+
+                Toggle::make('is_active')
+                    ->label('Active Status / مفعل')
+                    ->default(true)
+                    ->columnSpanFull(),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->contentGrid([
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->columns([
-                ImageColumn::make('logo'),
-                TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('phone'),
-                IconColumn::make('is_active')->boolean(),
-                TextColumn::make('creation_fee_rate')->money('USD'),
-                TextColumn::make('redemption_fee_rate')->money('USD'),
+                ImageColumn::make('logo')
+                    ->label('الشعار')
+                    ->height(48)
+                    ->width(48)
+                    ->circular(),
+
+                TextColumn::make('name')
+                    ->label('اسم المتجر')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->icon('heroicon-m-building-storefront'),
+
+                TextColumn::make('phone')
+                    ->label('الهاتف')
+                    ->icon('heroicon-m-phone'),
+
+                IconColumn::make('is_active')
+                    ->label('الحالة')
+                    ->boolean(),
+
+                TextColumn::make('creation_fee_rate')
+                    ->label('رسوم الإنشاء')
+                    ->money('USD')
+                    ->icon('heroicon-m-currency-dollar'),
+
+                TextColumn::make('redemption_fee_rate')
+                    ->label('رسوم التفعيل')
+                    ->money('USD')
+                    ->icon('heroicon-m-banknotes'),
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([
                 EditAction::make(),
                 RestoreAction::make(),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            StoreBranchesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

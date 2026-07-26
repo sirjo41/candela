@@ -27,25 +27,74 @@ class CampaignResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('title')->required(),
-            Textarea::make('description'),
-            FileUpload::make('banner_image')->image()->directory('campaigns'),
-            DateTimePicker::make('start_date')->required(),
-            DateTimePicker::make('end_date')->required(),
-            Toggle::make('is_active')->default(true),
-        ]);
+        return $schema
+            ->columns(2)
+            ->components([
+                TextInput::make('title')
+                    ->label('Campaign Title / عنوان الحملة')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpanFull(),
+
+                Textarea::make('description')
+                    ->label('Description / الوصف')
+                    ->rows(3)
+                    ->columnSpanFull(),
+
+                FileUpload::make('banner_image')
+                    ->label('Banner Image / صورة الحملة')
+                    ->image()
+                    ->directory('campaigns')
+                    ->columnSpanFull(),
+
+                DateTimePicker::make('start_date')
+                    ->label('Start Date / تاريخ البدء')
+                    ->required(),
+
+                DateTimePicker::make('end_date')
+                    ->label('End Date / تاريخ الانتهاء')
+                    ->required(),
+
+                Toggle::make('is_active')
+                    ->label('Active Status / مفعل')
+                    ->default(true)
+                    ->columnSpanFull(),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->contentGrid([
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->columns([
-                ImageColumn::make('banner_image'),
-                TextColumn::make('title')->searchable()->sortable(),
-                TextColumn::make('start_date')->dateTime(),
-                TextColumn::make('end_date')->dateTime(),
-                IconColumn::make('is_active')->boolean(),
+                ImageColumn::make('banner_image')
+                    ->label('الصورة')
+                    ->height(64)
+                    ->width(120),
+
+                TextColumn::make('title')
+                    ->label('عنوان الحملة')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->icon('heroicon-m-megaphone'),
+
+                TextColumn::make('start_date')
+                    ->label('تاريخ البدء')
+                    ->dateTime()
+                    ->icon('heroicon-m-calendar'),
+
+                TextColumn::make('end_date')
+                    ->label('تاريخ الانتهاء')
+                    ->dateTime()
+                    ->icon('heroicon-m-calendar'),
+
+                IconColumn::make('is_active')
+                    ->label('الحالة')
+                    ->boolean(),
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([
