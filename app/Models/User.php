@@ -8,6 +8,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -21,13 +22,14 @@ use Illuminate\Support\Carbon;
  * @property int $loyalty_points
  * @property bool $is_active
  * @property string $role
+ * @property int|null $store_id
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-#[Fillable(['name', 'email', 'phone', 'loyalty_points', 'is_active', 'role', 'password'])]
+#[Fillable(['name', 'email', 'phone', 'loyalty_points', 'is_active', 'role', 'store_id', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -49,18 +51,46 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
-        return (bool) $this->is_active;
+        if ($panel->getId() === 'admin') {
+            return $this->isAdmin();
+        }
+
+        if ($panel->getId() === 'owner') {
+            return ($this->isStoreOwner() || $this->isAdmin()) && (bool) $this->is_active;
+        }
+
+        return false;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin' || $this->role === 'national_admin';
+    }
+
+    public function isStoreOwner(): bool
+    {
+        return $this->role === 'store_owner' || $this->role === 'merchant';
+    }
+
+    public function isCustomer(): bool
+    {
+        return empty($this->role) || $this->role === 'customer';
     }
 
     public function isNationalAdmin(): bool
     {
-        return empty($this->role) || $this->role === 'admin' || $this->role === 'national_admin';
+        return $this->isAdmin();
     }
 
     public function isMerchant(): bool
     {
-        return $this->role === 'merchant';
+        return $this->isStoreOwner();
     }
 }

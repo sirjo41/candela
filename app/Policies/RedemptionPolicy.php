@@ -9,36 +9,36 @@ class RedemptionPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isNationalAdmin() || $user->isMerchant();
+        return $user->isAdmin() || $user->isStoreOwner();
     }
 
     public function view(User $user, Redemption $redemption): bool
     {
-        return $user->isNationalAdmin() || $user->isMerchant();
+        return $user->isAdmin() || ($user->isStoreOwner() && $redemption->branch?->store_id === $user->store_id);
     }
 
     public function create(User $user): bool
     {
-        return false;
+        return $user->isAdmin();
     }
 
     public function update(User $user, Redemption $redemption): bool
     {
-        return false;
+        return $user->isAdmin();
     }
 
     public function delete(User $user, Redemption $redemption): bool
     {
-        return false;
+        return $user->isAdmin();
     }
 
     public function restore(User $user, Redemption $redemption): bool
     {
-        return false;
+        return $user->isAdmin();
     }
 
     public function forceDelete(User $user, Redemption $redemption): bool
     {
-        return false;
+        return $user->isAdmin();
     }
 }

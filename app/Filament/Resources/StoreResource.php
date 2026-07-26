@@ -5,13 +5,18 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\StoreResource\Pages;
 use App\Filament\Resources\StoreResource\RelationManagers\StoreBranchesRelationManager;
 use App\Models\Store;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Columns\IconColumn;
@@ -63,6 +68,58 @@ class StoreResource extends Resource
                     ->label('Active Status / مفعل')
                     ->default(true)
                     ->columnSpanFull(),
+
+                Section::make('Store Owner Assignment / تعيين مالك المتجر')
+                    ->description('Assign an existing user or create a new store owner account.')
+                    ->schema([
+                        Radio::make('owner_option')
+                            ->label('Owner Assignment Method')
+                            ->options([
+                                'none' => 'No Owner Assignment',
+                                'existing' => 'Assign Existing User',
+                                'new' => 'Create New User',
+                            ])
+                            ->default('none')
+                            ->reactive()
+                            ->columnSpanFull(),
+
+                        Select::make('existing_owner_id')
+                            ->label('Select Existing User')
+                            ->options(fn () => User::query()
+                                ->whereIn('role', ['customer', 'store_owner', 'merchant'])
+                                ->pluck('name', 'id'))
+                            ->searchable()
+                            ->visible(fn ($get) => $get('owner_option') === 'existing')
+                            ->columnSpanFull(),
+
+                        Group::make([
+                            TextInput::make('new_owner_name')
+                                ->label('Owner Name / اسم المالك')
+                                ->required(fn ($get) => $get('owner_option') === 'new')
+                                ->maxLength(255),
+
+                            TextInput::make('new_owner_email')
+                                ->label('Owner Email / البريد الإلكتروني')
+                                ->email()
+                                ->required(fn ($get) => $get('owner_option') === 'new')
+                                ->maxLength(255),
+
+                            TextInput::make('new_owner_phone')
+                                ->label('Owner Phone / رقم الهاتف')
+                                ->tel(),
+
+                            TextInput::make('new_owner_password')
+                                ->label('Owner Password / كلمة المرور')
+                                ->password()
+                                ->required(fn ($get) => $get('owner_option') === 'new')
+                                ->minLength(6),
+                        ])
+                        ->columns(2)
+                        ->visible(fn ($get) => $get('owner_option') === 'new')
+                        ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull()
+                    ->collapsible(),
             ]);
     }
 
