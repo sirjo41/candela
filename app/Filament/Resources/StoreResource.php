@@ -163,6 +163,24 @@ class StoreResource extends Resource
                     ->label('رسوم التفعيل')
                     ->money('USD')
                     ->icon('heroicon-m-banknotes'),
+
+                TextColumn::make('total_creation_fees')
+                    ->label('Total Creation Fees / إجمالي رسوم الإنشاء')
+                    ->money('USD')
+                    ->badge()
+                    ->color('info'),
+
+                TextColumn::make('total_redemption_fees')
+                    ->label('Total Redemption Fees / إجمالي رسوم التفعيل')
+                    ->money('USD')
+                    ->badge()
+                    ->color('info'),
+
+                TextColumn::make('grand_total_fees')
+                    ->label('Total Balance / الرصيد الإجمالي')
+                    ->money('USD')
+                    ->badge()
+                    ->color('warning'),
             ])
             ->filters([ Tables\Filters\TrashedFilter::make() ])
             ->actions([

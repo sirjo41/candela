@@ -41,4 +41,21 @@ class Coupon extends Model
     {
         return $this->hasMany(Redemption::class);
     }
+
+    protected static function booted()
+    {
+        static::creating(function (Coupon $coupon) {
+            if ($coupon->store_id) {
+                $store = $coupon->store;
+                if ($store) {
+                    if ($coupon->creation_fee === null || $coupon->creation_fee <= 0) {
+                        $coupon->creation_fee = $store->creation_fee_rate;
+                    }
+                    if ($coupon->redemption_fee === null || $coupon->redemption_fee <= 0) {
+                        $coupon->redemption_fee = $store->redemption_fee_rate;
+                    }
+                }
+            }
+        });
+    }
 }

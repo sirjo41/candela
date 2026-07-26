@@ -67,13 +67,13 @@ class CouponResource extends Resource
                     ->label('Creation Fee ($)')
                     ->numeric()
                     ->prefix('$')
-                    ->required(),
+                    ->nullable(),
 
                 TextInput::make('redemption_fee')
                     ->label('Redemption Fee ($)')
                     ->numeric()
                     ->prefix('$')
-                    ->required(),
+                    ->nullable(),
 
                 DateTimePicker::make('expires_at')
                     ->label('Expiration Date / تاريخ الانتهاء')

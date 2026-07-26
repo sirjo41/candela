@@ -12,6 +12,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Placeholder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -66,19 +67,26 @@ class CouponResource extends Resource
                     ->numeric()
                     ->required(),
 
+                Placeholder::make('fee_notice')
+                    ->label('Fee Information')
+                    ->content('The creation and redemption fees below are automatically determined by your store\'s active rates and cannot be changed here.')
+                    ->columnSpanFull(),
+
                 TextInput::make('creation_fee')
                     ->label('Calculated Creation Fee ($)')
                     ->numeric()
                     ->prefix('$')
                     ->default(fn () => auth()->user()?->store?->creation_fee_rate ?? 0)
-                    ->required(),
+                    ->disabled()
+                    ->dehydrated(),
 
                 TextInput::make('redemption_fee')
                     ->label('Calculated Redemption Fee ($)')
                     ->numeric()
                     ->prefix('$')
                     ->default(fn () => auth()->user()?->store?->redemption_fee_rate ?? 0)
-                    ->required(),
+                    ->disabled()
+                    ->dehydrated(),
 
                 DateTimePicker::make('expires_at')
                     ->label('Expiration Date / تاريخ الانتهاء')
