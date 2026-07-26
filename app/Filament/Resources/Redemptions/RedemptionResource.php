@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\RedemptionResource\Pages;
+use App\Models\Redemption;
+use BackedEnum;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+
+class RedemptionResource extends Resource
+{
+    protected static ?string $model = Redemption::class;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-qr-code';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            Select::make('coupon_id')->relationship('coupon', 'title')->disabled(),
+            Select::make('user_id')->relationship('user', 'name')->disabled(),
+            Select::make('branch_id')->relationship('branch', 'name')->disabled(),
+            TextInput::make('qr_code_hash')->disabled(),
+            TextInput::make('points_awarded')->numeric()->disabled(),
+            TextInput::make('charged_fee')->numeric()->prefix('$')->disabled(),
+            DateTimePicker::make('redeemed_at')->disabled(),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('coupon.title')->label('Coupon')->searchable(),
+                TextColumn::make('user.name')->label('Customer')->searchable(),
+                TextColumn::make('branch.name')->label('Branch')->searchable(),
+                TextColumn::make('qr_code_hash')->label('QR Hash')->badge()->copyable(),
+                TextColumn::make('points_awarded')->label('Points'),
+                TextColumn::make('charged_fee')->money('USD')->sortable(),
+                TextColumn::make('redeemed_at')->dateTime()->sortable(),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListRedemptions::route('/'),
+            'view' => Pages\ViewRedemption::route('/{record}'),
+        ];
+    }
+}
