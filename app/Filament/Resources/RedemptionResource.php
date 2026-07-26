@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\RedemptionResource\Pages;
 use App\Models\Redemption;
 use BackedEnum;
+use UnitEnum;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -19,6 +20,7 @@ class RedemptionResource extends Resource
 {
     protected static ?string $model = Redemption::class;
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-qr-code';
+    protected static string|UnitEnum|null $navigationGroup = 'Coupons and Fees';
 
     public static function form(Schema $schema): Schema
     {

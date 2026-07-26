@@ -6,6 +6,7 @@ use App\Filament\Resources\StoreResource\Pages;
 use App\Filament\Resources\StoreResource\RelationManagers\StoreBranchesRelationManager;
 use App\Models\Store;
 use App\Models\User;
+use UnitEnum;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
@@ -28,6 +29,7 @@ class StoreResource extends Resource
 {
     protected static ?string $model = Store::class;
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string|UnitEnum|null $navigationGroup = 'Store Management';
 
     public static function form(Schema $schema): Schema
     {

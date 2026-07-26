@@ -24,9 +24,11 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-users';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
-    protected static UnitEnum|string|null $navigationGroup = 'User Management';
+    protected static string|UnitEnum|null $navigationGroup = 'User Management';
+
+    protected static ?string $navigationLabel = 'All Users / كل المستخدمين';
 
     public static function form(Schema $schema): Schema
     {
@@ -50,20 +52,30 @@ class UserResource extends Resource
                     ->nullable(),
 
                 Select::make('role')
-                    ->label('User Role / الدور')
+                    ->label('User Category / فئة المستخدم')
                     ->options([
-                        'admin' => 'National Admin',
-                        'merchant' => 'Merchant',
-                        'customer' => 'Customer',
+                        'customer' => 'Customer / عميل',
+                        'admin' => 'Admin / مسؤول',
+                        'store_owner' => 'Store Owner / مالك متجر',
                     ])
                     ->default('customer')
+                    ->reactive()
                     ->required(),
+
+                Select::make('store_id')
+                    ->label('Assigned Store / المتجر المعين')
+                    ->relationship('store', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->nullable()
+                    ->visible(fn ($get) => in_array($get('role'), ['store_owner', 'merchant'])),
 
                 TextInput::make('loyalty_points')
                     ->label('Loyalty Points / نقاط الولاء')
                     ->numeric()
                     ->default(0)
-                    ->required(),
+                    ->required()
+                    ->visible(fn ($get) => empty($get('role')) || $get('role') === 'customer'),
 
                 Toggle::make('is_active')
                     ->label('Account Active Status / مفعل')
@@ -74,10 +86,6 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->contentGrid([
-                'md' => 2,
-                'xl' => 3,
-            ])
             ->columns([
                 TextColumn::make('name')
                     ->label('الاسم')
@@ -98,13 +106,24 @@ class UserResource extends Resource
                     ->icon('heroicon-m-phone'),
 
                 TextColumn::make('role')
-                    ->label('الدور')
+                    ->label('الفئة / الدور')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'admin', 'national_admin' => 'Admin / مسؤول',
+                        'store_owner', 'merchant' => 'Store Owner / مالك متجر',
+                        default => 'Customer / عميل',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
                         'admin', 'national_admin' => 'danger',
-                        'merchant' => 'info',
-                        default => 'gray',
+                        'store_owner', 'merchant' => 'info',
+                        default => 'success',
                     }),
+
+                TextColumn::make('store.name')
+                    ->label('المتجر')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
 
                 TextColumn::make('loyalty_points')
                     ->label('نقاط الولاء')
@@ -123,6 +142,25 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('role')
+                    ->label('User Category / فئة المستخدم')
+                    ->options([
+                        'customer' => 'Customers / العملاء',
+                        'admin' => 'Admins / المسؤولون',
+                        'store_owner' => 'Store Owners / ملاك المتاجر',
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+
+                        return match ($data['value']) {
+                            'customer' => $query->customers(),
+                            'admin' => $query->admins(),
+                            'store_owner' => $query->storeOwners(),
+                            default => $query,
+                        };
+                    }),
                 TrashedFilter::make(),
             ])
             ->actions([
