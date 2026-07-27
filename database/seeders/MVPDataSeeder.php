@@ -101,6 +101,33 @@ class MVPDataSeeder extends Seeder
             ]
         );
 
+        // Merchant Users assigned to stores
+        User::firstOrCreate(
+            ['email' => 'merchant1@example.com'],
+            [
+                'name' => 'Urban Coffee Merchant',
+                'phone' => '+15550100',
+                'loyalty_points' => 0,
+                'is_active' => true,
+                'role' => 'merchant',
+                'store_id' => $store1->id,
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        User::firstOrCreate(
+            ['email' => 'merchant2@example.com'],
+            [
+                'name' => 'Gourmet Burger Merchant',
+                'phone' => '+15550200',
+                'loyalty_points' => 0,
+                'is_active' => true,
+                'role' => 'merchant',
+                'store_id' => $store2->id,
+                'password' => Hash::make('password'),
+            ]
+        );
+
         // 4. Branches
         $branch1 = Branch::firstOrCreate(
             ['store_id' => $store1->id, 'name' => 'Downtown Flagship'],

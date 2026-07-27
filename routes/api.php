@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // 1. API Authentication & Token Setup
     Route::prefix('auth')->group(function () {
+        Route::post('login', [AuthController::class, 'login']);
         Route::post('customer/register', [AuthController::class, 'registerCustomer']);
         Route::post('customer/login', [AuthController::class, 'loginCustomer']);
         Route::post('merchant/login', [AuthController::class, 'loginMerchant']);

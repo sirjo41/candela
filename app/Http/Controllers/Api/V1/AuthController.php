@@ -54,14 +54,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Customer login via phone/email and password.
+     * Unified login method for both customer and merchant accounts.
      */
-    public function loginCustomer(Request $request): JsonResponse
+    public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phone' => ['nullable', 'string'],
-            'email' => ['nullable', 'string', 'email'],
             'login' => ['nullable', 'string'],
+            'phone' => ['nullable', 'string'],
+            'email' => ['nullable', 'string'],
             'password' => ['required', 'string'],
         ]);
 
@@ -74,87 +74,41 @@ class AuthController extends Controller
         }
 
         $user = User::query()
+            ->with('store')
             ->where(function ($query) use ($loginInput) {
                 $query->where('phone', $loginInput)
                     ->orWhere('email', $loginInput);
             })
             ->first();
 
-        if (! $user || ! Hash::check($validated['password'], $user->password) || ! $user->isCustomer()) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json([
-                'message' => 'Invalid customer credentials',
+                'message' => 'Invalid credentials',
             ], 401);
         }
 
         if (! $user->is_active) {
             return response()->json([
-                'message' => 'Customer account is deactivated',
+                'message' => 'User account is deactivated',
             ], 403);
         }
 
-        $token = $user->createToken('customer-api-token', ['role:customer'])->plainTextToken;
+        // Assign token abilities dynamically based on role/flags
+        $abilities = [];
+        if ($user->is_merchant) {
+            $abilities[] = 'role:merchant';
+        }
+        if ($user->is_customer) {
+            $abilities[] = 'role:customer';
+        }
+        if ($user->is_admin) {
+            $abilities[] = 'role:admin';
+        }
+
+        $token = $user->createToken('auth-api-token', $abilities)->plainTextToken;
 
         return response()->json([
-            'message' => 'Customer login successful',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'is_customer' => $user->is_customer,
-                'is_merchant' => $user->is_merchant,
-                'is_admin' => $user->is_admin,
-                'loyalty_points' => $user->loyalty_points,
-            ],
-        ]);
-    }
-
-    /**
-     * Merchant login via email/phone and password.
-     */
-    public function loginMerchant(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'email' => ['nullable', 'string'],
-            'phone' => ['nullable', 'string'],
-            'login' => ['nullable', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $loginInput = $validated['login'] ?? $validated['email'] ?? $validated['phone'] ?? null;
-
-        if (! $loginInput) {
-            throw ValidationException::withMessages([
-                'login' => ['Please provide an email address or phone number.'],
-            ]);
-        }
-
-        $user = User::query()
-            ->where(function ($query) use ($loginInput) {
-                $query->where('email', $loginInput)
-                    ->orWhere('phone', $loginInput);
-            })
-            ->first();
-
-        if (! $user || ! Hash::check($validated['password'], $user->password) || ! $user->isMerchant()) {
-            return response()->json([
-                'message' => 'Invalid merchant credentials',
-            ], 401);
-        }
-
-        if (! $user->is_active) {
-            return response()->json([
-                'message' => 'Merchant account is deactivated',
-            ], 403);
-        }
-
-        $token = $user->createToken('merchant-api-token', ['role:merchant'])->plainTextToken;
-
-        return response()->json([
-            'message' => 'Merchant login successful',
+            'message' => 'Login successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => [
@@ -167,6 +121,8 @@ class AuthController extends Controller
                 'is_merchant' => $user->is_merchant,
                 'is_admin' => $user->is_admin,
                 'store_id' => $user->store_id,
+                'store_name' => $user->store?->name,
+                'loyalty_points' => $user->loyalty_points,
             ],
             'store' => $user->store ? [
                 'id' => $user->store->id,
@@ -174,5 +130,21 @@ class AuthController extends Controller
                 'is_active' => $user->store->is_active,
             ] : null,
         ]);
+    }
+
+    /**
+     * Customer login alias.
+     */
+    public function loginCustomer(Request $request): JsonResponse
+    {
+        return $this->login($request);
+    }
+
+    /**
+     * Merchant login alias.
+     */
+    public function loginMerchant(Request $request): JsonResponse
+    {
+        return $this->login($request);
     }
 }
