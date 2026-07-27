@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property int $id
@@ -34,7 +37,7 @@ use Illuminate\Support\Carbon;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -54,6 +57,18 @@ class User extends Authenticatable implements FilamentUser
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function claimedCoupons(): HasMany
+    {
+        return $this->hasMany(ClaimedCoupon::class);
+    }
+
+    public function coupons(): BelongsToMany
+    {
+        return $this->belongsToMany(Coupon::class, 'claimed_coupons')
+            ->withPivot(['id', 'status', 'claimed_at', 'redeemed_at'])
+            ->withTimestamps();
     }
 
     public function canAccessPanel(Panel $panel): bool

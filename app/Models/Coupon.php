@@ -42,6 +42,11 @@ class Coupon extends Model
         return $this->hasMany(Redemption::class);
     }
 
+    public function claimedCoupons(): HasMany
+    {
+        return $this->hasMany(ClaimedCoupon::class);
+    }
+
     protected static function booted()
     {
         static::creating(function (Coupon $coupon) {
