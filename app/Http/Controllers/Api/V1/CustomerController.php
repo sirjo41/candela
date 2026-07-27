@@ -13,6 +13,17 @@ use Illuminate\Support\Facades\Crypt;
 
 class CustomerController extends Controller
 {
+    private function formatLogoUrl(?string $logo): ?string
+    {
+        if (empty($logo)) {
+            return null;
+        }
+        if (str_starts_with($logo, 'http://') || str_starts_with($logo, 'https://')) {
+            return $logo;
+        }
+        return asset('storage/' . ltrim($logo, '/'));
+    }
+
     /**
      * Get list of merchant locations and branch addresses.
      */
@@ -20,22 +31,34 @@ class CustomerController extends Controller
     {
         $stores = Store::query()
             ->where('is_active', true)
-            ->with(['branches' => fn ($query) => $query->where('is_active', true)])
+            ->with([
+                'branches' => fn ($query) => $query->where('is_active', true),
+                'merchants',
+            ])
             ->get();
 
         return response()->json([
             'data' => $stores->map(function ($store) {
                 $primaryBranch = $store->branches->first();
+                $logoUrl = $this->formatLogoUrl($store->logo);
+
                 return [
                     'id' => $store->id,
                     'branch_id' => $primaryBranch ? "BRANCH-00{$primaryBranch->id}" : "BRANCH-00{$store->id}",
                     'name' => $store->name,
-                    'logo' => $store->logo,
+                    'store_name' => $store->name,
+                    'logo' => $logoUrl,
+                    'store_logo_url' => $logoUrl,
                     'address' => $primaryBranch ? $primaryBranch->address : 'Cairo, Egypt',
                     'distance' => '1.2 km away',
                     'open_hours' => '9:00 AM - 11:00 PM',
                     'rating' => 4.9,
                     'branches' => $store->branches,
+                    'merchants' => $store->merchants->map(fn ($m) => [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                        'email' => $m->email,
+                    ]),
                 ];
             }),
         ]);
@@ -46,12 +69,20 @@ class CustomerController extends Controller
      */
     public function wallet(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?? $request->user();
         $now = now();
 
+        if (! $user) {
+            return response()->json([
+                'wallet' => ['active' => [], 'used' => [], 'expired' => [], 'qr_pass' => null],
+                'user' => null,
+            ]);
+        }
+
         $claimedCoupons = ClaimedCoupon::query()
-            ->with(['coupon.store:id,name,logo', 'coupon.campaign:id,title'])
+            ->with(['coupon.store', 'coupon.campaign'])
             ->where('user_id', $user->id)
+            ->latest('claimed_at')
             ->get();
 
         $active = [];
@@ -65,14 +96,18 @@ class CustomerController extends Controller
             }
 
             $isExpired = $claimed->status === 'expired' || ($coupon->expires_at && \Illuminate\Support\Carbon::parse($coupon->expires_at)->isPast());
+            $store = $coupon->store;
+            $logoUrl = $this->formatLogoUrl($store?->logo);
+            $storeName = $store?->name ?? 'Candela Partner Store';
 
             $formattedItem = [
                 'id' => $claimed->id,
                 'coupon_id' => $coupon->id,
                 'code' => $coupon->code ?? "CPN-{$coupon->id}",
                 'title' => $coupon->title ?? 'Special Savings Voucher',
-                'store' => $coupon->store ? $coupon->store->name : 'Candela Partner Store',
-                'store_logo_url' => $coupon->store ? $coupon->store->logo : null,
+                'store' => $storeName,
+                'store_name' => $storeName,
+                'store_logo_url' => $logoUrl,
                 'status' => $claimed->status === 'redeemed' ? 'used' : ($isExpired ? 'expired' : 'active'),
                 'expires' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : '2026-12-31',
                 'claimed_at' => $claimed->claimed_at ? \Illuminate\Support\Carbon::parse($claimed->claimed_at)->format('Y-m-d H:i') : null,
@@ -120,7 +155,7 @@ class CustomerController extends Controller
     public function campaigns(Request $request): JsonResponse
     {
         $now = now();
-        $user = $request->user('sanctum');
+        $user = $request->user('sanctum') ?? $request->user();
 
         $userClaimedCouponIds = [];
         if ($user) {
@@ -128,7 +163,7 @@ class CustomerController extends Controller
         }
 
         $campaigns = Campaign::query()
-            ->with(['coupons.store:id,name,logo'])
+            ->with(['coupons.store.merchants'])
             ->where('is_active', true)
             ->where(function ($q) use ($now) {
                 $q->whereNull('start_date')->orWhere('start_date', '<=', $now);
@@ -142,6 +177,14 @@ class CustomerController extends Controller
             $primaryCoupon = $campaign->coupons->first();
             $store = $primaryCoupon ? $primaryCoupon->store : null;
             $isClaimed = $primaryCoupon && in_array($primaryCoupon->id, $userClaimedCouponIds);
+            $logoUrl = $this->formatLogoUrl($store?->logo);
+            $storeName = $store?->name ?? 'Candela Partner Store';
+
+            $validUntil = $campaign->end_date
+                ? \Illuminate\Support\Carbon::parse($campaign->end_date)->format('Y-m-d')
+                : ($primaryCoupon && $primaryCoupon->expires_at
+                    ? \Illuminate\Support\Carbon::parse($primaryCoupon->expires_at)->format('Y-m-d')
+                    : '2026-08-31');
 
             return [
                 'id' => $campaign->id,
@@ -149,10 +192,11 @@ class CustomerController extends Controller
                 'title' => $campaign->title,
                 'description' => $campaign->description,
                 'discount' => $primaryCoupon ? ($primaryCoupon->discount_type === 'percentage' ? "{$primaryCoupon->discount_value}% OFF" : "EGP {$primaryCoupon->discount_value} OFF") : 'SPECIAL OFFER',
-                'store' => $store ? $store->name : 'Candela Partner Stores',
-                'store_name' => $store ? $store->name : 'Candela Partner Stores',
-                'store_logo_url' => $store ? $store->logo : null,
-                'valid_until' => $campaign->end_date ? \Illuminate\Support\Carbon::parse($campaign->end_date)->format('Y-m-d') : ($primaryCoupon && $primaryCoupon->expires_at ? \Illuminate\Support\Carbon::parse($primaryCoupon->expires_at)->format('Y-m-d') : '2026-08-31'),
+                'store' => $storeName,
+                'store_name' => $storeName,
+                'store_logo_url' => $logoUrl,
+                'valid_until' => $validUntil,
+                'expires_at' => $validUntil,
                 'image_color' => 0xFF1E3A8A,
                 'claimed' => $isClaimed,
                 'is_claimed' => $isClaimed,
@@ -172,7 +216,7 @@ class CustomerController extends Controller
         $now = now();
 
         $query = Coupon::query()
-            ->with(['store:id,name,logo', 'campaign:id,title'])
+            ->with(['store', 'campaign'])
             ->where('is_active', true)
             ->where('expires_at', '>', $now)
             ->where(function ($q) {
@@ -190,7 +234,20 @@ class CustomerController extends Controller
         $coupons = $query->get();
 
         return response()->json([
-            'data' => $coupons,
+            'data' => $coupons->map(function ($coupon) {
+                $store = $coupon->store;
+                return [
+                    'id' => $coupon->id,
+                    'code' => $coupon->code,
+                    'title' => $coupon->title,
+                    'discount_type' => $coupon->discount_type,
+                    'discount_value' => $coupon->discount_value,
+                    'store_id' => $coupon->store_id,
+                    'store_name' => $store?->name ?? 'Candela Partner Store',
+                    'store_logo_url' => $this->formatLogoUrl($store?->logo),
+                    'expires_at' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : null,
+                ];
+            }),
         ]);
     }
 
@@ -199,14 +256,18 @@ class CustomerController extends Controller
      */
     public function claim(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?? $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         // Check if $id refers to a Coupon or Campaign
-        $coupon = Coupon::find($id);
+        $coupon = Coupon::with('store')->find($id);
 
         if (! $coupon) {
             // Find coupon by campaign_id or create default coupon for campaign
-            $campaign = Campaign::with('coupons')->find($id);
+            $campaign = Campaign::with('coupons.store')->find($id);
             if ($campaign && $campaign->coupons->isNotEmpty()) {
                 $coupon = $campaign->coupons->first();
             } else {
@@ -221,6 +282,7 @@ class CustomerController extends Controller
                     'expires_at' => now()->addDays(30),
                     'is_active' => true,
                 ]);
+                $coupon->load('store');
             }
         }
 
@@ -241,9 +303,17 @@ class CustomerController extends Controller
             ]
         );
 
-        $coupon->increment('uses_count');
+        if ($claimed->wasRecentlyCreated) {
+            $coupon->increment('uses_count');
+        }
+
+        $store = $coupon->store;
+        $logoUrl = $this->formatLogoUrl($store?->logo);
+        $storeName = $store?->name ?? 'Candela Partner Store';
+        $expiresFormatted = $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : '2026-08-31';
 
         return response()->json([
+            'success' => true,
             'message' => 'Coupon claimed successfully',
             'is_claimed' => true,
             'claimed' => true,
@@ -252,10 +322,12 @@ class CustomerController extends Controller
                 'coupon_id' => $claimed->coupon_id,
                 'code' => $coupon->code,
                 'title' => $coupon->title,
-                'store' => $coupon->store ? $coupon->store->name : 'Candela Partner Store',
-                'store_logo_url' => $coupon->store ? $coupon->store->logo : null,
+                'store' => $storeName,
+                'store_name' => $storeName,
+                'store_logo_url' => $logoUrl,
                 'status' => 'active',
-                'expires' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : '2026-08-31',
+                'expires' => $expiresFormatted,
+                'expires_at' => $expiresFormatted,
                 'claimed_at' => now()->format('Y-m-d H:i'),
             ],
         ], 200);
@@ -266,10 +338,14 @@ class CustomerController extends Controller
      */
     public function profile(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?? $request->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         $claimedCoupons = ClaimedCoupon::query()
-            ->with(['coupon.store:id,name,logo', 'coupon.campaign:id,title'])
+            ->with(['coupon.store', 'coupon.campaign'])
             ->where('user_id', $user->id)
             ->get();
 
@@ -281,6 +357,8 @@ class CustomerController extends Controller
                 'phone' => $user->phone,
                 'loyalty_points' => $user->loyalty_points,
                 'role' => $user->role,
+                'is_merchant' => $user->is_merchant,
+                'is_admin' => $user->is_admin,
             ],
             'claimed_coupons' => $claimedCoupons->map(function ($claimed) {
                 return [
@@ -294,3 +372,4 @@ class CustomerController extends Controller
         ]);
     }
 }
+

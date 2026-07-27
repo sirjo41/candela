@@ -32,7 +32,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-#[Fillable(['name', 'email', 'phone', 'loyalty_points', 'is_active', 'role', 'store_id', 'password'])]
+#[Fillable(['name', 'email', 'phone', 'loyalty_points', 'is_active', 'role', 'is_merchant', 'store_id', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -61,8 +61,23 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_merchant' => 'boolean',
             'loyalty_points' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            if (! empty($user->store_id)) {
+                if ($user->role === 'customer' || empty($user->role)) {
+                    $user->role = 'merchant';
+                }
+                $user->is_merchant = true;
+            } elseif ($user->role === 'merchant' || $user->role === 'store_owner') {
+                $user->is_merchant = true;
+            }
+        });
     }
 
     public function store(): BelongsTo
@@ -102,7 +117,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function isMerchant(): bool
     {
-        return $this->role === 'merchant' || $this->role === 'store_owner';
+        return $this->role === 'merchant' || $this->role === 'store_owner' || (bool) ($this->attributes['is_merchant'] ?? false) || ! empty($this->store_id);
     }
 
     public function isStoreOwner(): bool
@@ -112,7 +127,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function isCustomer(): bool
     {
-        return empty($this->role) || $this->role === 'customer';
+        return ! $this->isAdmin() && ! $this->isMerchant();
     }
 
     public function isNationalAdmin(): bool
