@@ -17,8 +17,11 @@ test('customer registration successfully creates user and returns token', functi
             'message',
             'access_token',
             'token_type',
-            'user' => ['id', 'name', 'email', 'phone', 'role', 'loyalty_points'],
-        ]);
+            'user' => ['id', 'name', 'email', 'phone', 'role', 'is_customer', 'is_merchant', 'is_admin', 'loyalty_points'],
+        ])
+        ->assertJsonPath('user.is_customer', true)
+        ->assertJsonPath('user.is_merchant', false)
+        ->assertJsonPath('user.is_admin', false);
 
     $this->assertDatabaseHas('users', [
         'email' => 'alice@example.com',
@@ -101,9 +104,11 @@ test('merchant login succeeds for store owner/merchant user with store data', fu
             'message',
             'access_token',
             'token_type',
-            'user' => ['id', 'name', 'email', 'store_id'],
+            'user' => ['id', 'name', 'email', 'store_id', 'is_customer', 'is_merchant', 'is_admin'],
             'store' => ['id', 'name', 'is_active'],
         ])
+        ->assertJsonPath('user.is_merchant', true)
+        ->assertJsonPath('user.is_customer', false)
         ->assertJsonPath('store.name', 'Awesome Store');
 });
 

@@ -40,6 +40,17 @@ class User extends Authenticatable implements FilamentUser
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'is_customer',
+        'is_merchant',
+        'is_admin',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -105,6 +116,21 @@ class User extends Authenticatable implements FilamentUser
     }
 
     public function isNationalAdmin(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function getIsCustomerAttribute(): bool
+    {
+        return $this->isCustomer();
+    }
+
+    public function getIsMerchantAttribute(): bool
+    {
+        return $this->isMerchant();
+    }
+
+    public function getIsAdminAttribute(): bool
     {
         return $this->isAdmin();
     }

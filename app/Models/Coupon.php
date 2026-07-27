@@ -27,6 +27,14 @@ class Coupon extends Model
         'is_active',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => 'datetime',
+            'is_active' => 'boolean',
+        ];
+    }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);

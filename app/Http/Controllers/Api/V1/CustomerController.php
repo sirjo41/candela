@@ -4,13 +4,86 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
-use App\Models\Coupon;
 use App\Models\ClaimedCoupon;
+use App\Models\Coupon;
+use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class CustomerController extends Controller
 {
+    /**
+     * Get list of merchant locations and branch addresses.
+     */
+    public function stores(Request $request): JsonResponse
+    {
+        $stores = Store::query()
+            ->where('is_active', true)
+            ->with(['branches' => fn ($query) => $query->where('is_active', true)])
+            ->get();
+
+        return response()->json([
+            'data' => $stores,
+        ]);
+    }
+
+    /**
+     * Get customer wallet with active, used, and expired claimed coupons + dynamic QR pass data.
+     */
+    public function wallet(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $now = now();
+
+        $claimedCoupons = ClaimedCoupon::query()
+            ->with(['coupon.store:id,name,logo', 'coupon.campaign:id,title'])
+            ->where('user_id', $user->id)
+            ->get();
+
+        $active = [];
+        $used = [];
+        $expired = [];
+
+        foreach ($claimedCoupons as $claimed) {
+            $coupon = $claimed->coupon;
+            $isExpired = $claimed->status === 'expired' || ($coupon && $coupon->expires_at && \Illuminate\Support\Carbon::parse($coupon->expires_at)->isPast());
+
+            if ($claimed->status === 'redeemed') {
+                $used[] = $claimed;
+            } elseif ($isExpired) {
+                $expired[] = $claimed;
+            } else {
+                $active[] = $claimed;
+            }
+        }
+
+        $qrPassData = [
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'loyalty_points' => $user->loyalty_points,
+            'dynamic_pass_payload' => Crypt::encrypt(json_encode([
+                'user_id' => $user->id,
+                'created_at' => $now->timestamp,
+                'expires_at' => $now->copy()->addMinutes(15)->timestamp,
+            ])),
+        ];
+
+        return response()->json([
+            'wallet' => [
+                'active' => $active,
+                'used' => $used,
+                'expired' => $expired,
+                'qr_pass' => $qrPassData,
+            ],
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'loyalty_points' => $user->loyalty_points,
+            ],
+        ]);
+    }
     /**
      * Get list of active campaigns.
      */

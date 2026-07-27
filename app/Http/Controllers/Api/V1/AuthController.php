@@ -33,7 +33,7 @@ class AuthController extends Controller
             'loyalty_points' => 0,
         ]);
 
-        $token = $user->createToken('customer-api-token')->plainTextToken;
+        $token = $user->createToken('customer-api-token', ['role:customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Customer registered successfully',
@@ -45,6 +45,9 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
+                'is_customer' => $user->is_customer,
+                'is_merchant' => $user->is_merchant,
+                'is_admin' => $user->is_admin,
                 'loyalty_points' => $user->loyalty_points,
             ],
         ], 201);
@@ -89,7 +92,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('customer-api-token')->plainTextToken;
+        $token = $user->createToken('customer-api-token', ['role:customer'])->plainTextToken;
 
         return response()->json([
             'message' => 'Customer login successful',
@@ -101,6 +104,9 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
+                'is_customer' => $user->is_customer,
+                'is_merchant' => $user->is_merchant,
+                'is_admin' => $user->is_admin,
                 'loyalty_points' => $user->loyalty_points,
             ],
         ]);
@@ -145,7 +151,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('merchant-api-token')->plainTextToken;
+        $token = $user->createToken('merchant-api-token', ['role:merchant'])->plainTextToken;
 
         return response()->json([
             'message' => 'Merchant login successful',
@@ -157,6 +163,9 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
+                'is_customer' => $user->is_customer,
+                'is_merchant' => $user->is_merchant,
+                'is_admin' => $user->is_admin,
                 'store_id' => $user->store_id,
             ],
             'store' => $user->store ? [
