@@ -63,7 +63,7 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'owner') {
-            return $this->isStoreOwner() && (bool) $this->is_active && ! empty($this->store_id);
+            return $this->isMerchant() && (bool) $this->is_active && ! empty($this->store_id);
         }
 
         return false;
@@ -74,9 +74,14 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === 'admin' || $this->role === 'national_admin';
     }
 
+    public function isMerchant(): bool
+    {
+        return $this->role === 'merchant' || $this->role === 'store_owner';
+    }
+
     public function isStoreOwner(): bool
     {
-        return $this->role === 'store_owner' || $this->role === 'merchant';
+        return $this->isMerchant();
     }
 
     public function isCustomer(): bool
@@ -89,11 +94,6 @@ class User extends Authenticatable implements FilamentUser
         return $this->isAdmin();
     }
 
-    public function isMerchant(): bool
-    {
-        return $this->isStoreOwner();
-    }
-
     public function scopeCustomers($query)
     {
         return $query->where(fn ($q) => $q->whereNull('role')->orWhereIn('role', ['customer']));
@@ -104,8 +104,13 @@ class User extends Authenticatable implements FilamentUser
         return $query->whereIn('role', ['admin', 'national_admin']);
     }
 
+    public function scopeMerchants($query)
+    {
+        return $query->whereIn('role', ['merchant', 'store_owner']);
+    }
+
     public function scopeStoreOwners($query)
     {
-        return $query->whereIn('role', ['store_owner', 'merchant']);
+        return $this->scopeMerchants($query);
     }
 }

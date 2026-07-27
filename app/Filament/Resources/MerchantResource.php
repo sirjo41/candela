@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\StoreOwnerResource\Pages;
+use App\Filament\Resources\MerchantResource\Pages;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\EditAction;
@@ -19,7 +19,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-class StoreOwnerResource extends Resource
+class MerchantResource extends Resource
 {
     protected static ?string $model = User::class;
 
@@ -27,13 +27,13 @@ class StoreOwnerResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'User Management';
 
-    protected static ?string $navigationLabel = 'Store Owners / ملاك المتاجر';
+    protected static ?string $navigationLabel = 'Merchants / التجار';
 
     protected static ?int $navigationSort = 4;
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->storeOwners();
+        return parent::getEloquentQuery()->merchants();
     }
 
     public static function form(Schema $schema): Schema
@@ -60,10 +60,9 @@ class StoreOwnerResource extends Resource
                 Select::make('role')
                     ->label('Role / الدور')
                     ->options([
-                        'store_owner' => 'Store Owner / مالك متجر',
                         'merchant' => 'Merchant / تاجر',
                     ])
-                    ->default('store_owner')
+                    ->default('merchant')
                     ->required(),
 
                 Select::make('store_id')
@@ -131,9 +130,9 @@ class StoreOwnerResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListStoreOwners::route('/'),
-            'create' => Pages\CreateStoreOwner::route('/create'),
-            'edit' => Pages\EditStoreOwner::route('/{record}/edit'),
+            'index' => Pages\ListMerchants::route('/'),
+            'create' => Pages\CreateMerchant::route('/create'),
+            'edit' => Pages\EditMerchant::route('/{record}/edit'),
         ];
     }
 }

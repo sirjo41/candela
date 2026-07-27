@@ -71,13 +71,13 @@ class StoreResource extends Resource
                     ->default(true)
                     ->columnSpanFull(),
 
-                Section::make('Store Owner Assignment / تعيين مالك المتجر')
-                    ->description('Assign an existing user or create a new store owner account.')
+                Section::make('Store Merchant Assignment / تعيين تاجر المتجر')
+                    ->description('Assign an existing user or create a new merchant account.')
                     ->schema([
                         Radio::make('owner_option')
-                            ->label('Owner Assignment Method')
+                            ->label('Merchant Assignment Method')
                             ->options([
-                                'none' => 'No Owner Assignment',
+                                'none' => 'No Merchant Assignment',
                                 'existing' => 'Assign Existing User',
                                 'new' => 'Create New User',
                             ])
@@ -88,7 +88,7 @@ class StoreResource extends Resource
                         Select::make('existing_owner_id')
                             ->label('Select Existing User')
                             ->options(fn () => User::query()
-                                ->whereIn('role', ['customer', 'store_owner', 'merchant'])
+                                ->whereIn('role', ['customer', 'merchant', 'store_owner'])
                                 ->pluck('name', 'id'))
                             ->searchable()
                             ->visible(fn ($get) => $get('owner_option') === 'existing')
@@ -96,22 +96,22 @@ class StoreResource extends Resource
 
                         Group::make([
                             TextInput::make('new_owner_name')
-                                ->label('Owner Name / اسم المالك')
+                                ->label('Merchant Name / اسم التاجر')
                                 ->required(fn ($get) => $get('owner_option') === 'new')
                                 ->maxLength(255),
 
                             TextInput::make('new_owner_email')
-                                ->label('Owner Email / البريد الإلكتروني')
+                                ->label('Merchant Email / البريد الإلكتروني')
                                 ->email()
                                 ->required(fn ($get) => $get('owner_option') === 'new')
                                 ->maxLength(255),
 
                             TextInput::make('new_owner_phone')
-                                ->label('Owner Phone / رقم الهاتف')
+                                ->label('Merchant Phone / رقم الهاتف')
                                 ->tel(),
 
                             TextInput::make('new_owner_password')
-                                ->label('Owner Password / كلمة المرور')
+                                ->label('Merchant Password / كلمة المرور')
                                 ->password()
                                 ->required(fn ($get) => $get('owner_option') === 'new')
                                 ->minLength(6),

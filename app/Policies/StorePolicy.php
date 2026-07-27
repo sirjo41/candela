@@ -9,12 +9,12 @@ class StorePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->isStoreOwner();
+        return $user->isAdmin() || $user->isMerchant();
     }
 
     public function view(User $user, Store $store): bool
     {
-        return $user->isAdmin() || ($user->isStoreOwner() && $store->id === $user->store_id);
+        return $user->isAdmin() || ($user->isMerchant() && $store->id === $user->store_id);
     }
 
     public function create(User $user): bool
@@ -24,7 +24,7 @@ class StorePolicy
 
     public function update(User $user, Store $store): bool
     {
-        return $user->isAdmin() || ($user->isStoreOwner() && $store->id === $user->store_id);
+        return $user->isAdmin() || ($user->isMerchant() && $store->id === $user->store_id);
     }
 
     public function delete(User $user, Store $store): bool

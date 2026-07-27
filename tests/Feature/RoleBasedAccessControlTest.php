@@ -10,19 +10,20 @@ use Filament\Panel;
 
 test('user role helpers return expected booleans', function () {
     $admin = new User(['role' => 'admin']);
-    $owner = new User(['role' => 'store_owner']);
+    $owner = new User(['role' => 'merchant']);
     $customer = new User(['role' => 'customer']);
 
     expect($admin->isAdmin())->toBeTrue();
-    expect($admin->isStoreOwner())->toBeFalse();
+    expect($admin->isMerchant())->toBeFalse();
     expect($admin->isCustomer())->toBeFalse();
 
+    expect($owner->isMerchant())->toBeTrue();
     expect($owner->isStoreOwner())->toBeTrue();
     expect($owner->isAdmin())->toBeFalse();
 
     expect($customer->isCustomer())->toBeTrue();
     expect($customer->isAdmin())->toBeFalse();
-    expect($customer->isStoreOwner())->toBeFalse();
+    expect($customer->isMerchant())->toBeFalse();
 });
 
 test('panel access authorization strictly enforces roles and state', function () {
@@ -39,9 +40,9 @@ test('panel access authorization strictly enforces roles and state', function ()
     ]);
 
     $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-    $owner = User::factory()->create(['role' => 'store_owner', 'store_id' => $store->id, 'is_active' => true]);
-    $inactiveOwner = User::factory()->create(['role' => 'store_owner', 'store_id' => $store->id, 'is_active' => false]);
-    $unassignedOwner = User::factory()->create(['role' => 'store_owner', 'store_id' => null, 'is_active' => true]);
+    $owner = User::factory()->merchant()->create(['store_id' => $store->id, 'is_active' => true]);
+    $inactiveOwner = User::factory()->merchant()->create(['store_id' => $store->id, 'is_active' => false]);
+    $unassignedOwner = User::factory()->merchant()->create(['store_id' => null, 'is_active' => true]);
     $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
 
     // Admin Panel access
@@ -61,7 +62,7 @@ test('store owner widget computes scoped kpi metrics correctly', function () {
     $storeA = Store::create(['name' => 'Store A', 'phone' => '111', 'is_active' => true]);
     $storeB = Store::create(['name' => 'Store B', 'phone' => '222', 'is_active' => true]);
 
-    $ownerA = User::factory()->create(['role' => 'store_owner', 'store_id' => $storeA->id]);
+    $ownerA = User::factory()->merchant()->create(['store_id' => $storeA->id]);
 
     Coupon::create([
         'store_id' => $storeA->id,

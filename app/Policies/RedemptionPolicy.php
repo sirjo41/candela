@@ -9,12 +9,12 @@ class RedemptionPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->isStoreOwner();
+        return $user->isAdmin() || $user->isMerchant();
     }
 
     public function view(User $user, Redemption $redemption): bool
     {
-        return $user->isAdmin() || ($user->isStoreOwner() && $redemption->branch?->store_id === $user->store_id);
+        return $user->isAdmin() || ($user->isMerchant() && $redemption->branch?->store_id === $user->store_id);
     }
 
     public function create(User $user): bool

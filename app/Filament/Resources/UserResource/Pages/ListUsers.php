@@ -30,10 +30,10 @@ class ListUsers extends ListRecords
                 ->icon('heroicon-o-user-group')
                 ->badge(User::query()->customers()->count())
                 ->modifyQueryUsing(fn (Builder $query) => $query->customers()),
-            'store_owners' => Tab::make('Store Owners / ملاك المتاجر')
+            'merchants' => Tab::make('Merchants / التجار')
                 ->icon('heroicon-o-building-storefront')
-                ->badge(User::query()->storeOwners()->count())
-                ->modifyQueryUsing(fn (Builder $query) => $query->storeOwners()),
+                ->badge(User::query()->merchants()->count())
+                ->modifyQueryUsing(fn (Builder $query) => $query->merchants()),
             'admins' => Tab::make('Admins / المسؤولون')
                 ->icon('heroicon-o-shield-check')
                 ->badge(User::query()->admins()->count())

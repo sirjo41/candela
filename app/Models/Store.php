@@ -21,9 +21,14 @@ class Store extends Model
         'redemption_fee_rate',
     ];
 
-    public function owners(): HasMany
+    public function merchants(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function owners(): HasMany
+    {
+        return $this->merchants();
     }
 
     public function branches(): HasMany

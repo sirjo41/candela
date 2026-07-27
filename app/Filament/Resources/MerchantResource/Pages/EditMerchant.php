@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\StoreOwnerResource\Pages;
+namespace App\Filament\Resources\MerchantResource\Pages;
 
-use App\Filament\Resources\StoreOwnerResource;
+use App\Filament\Resources\MerchantResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
-class EditStoreOwner extends EditRecord
+class EditMerchant extends EditRecord
 {
-    protected static string $resource = StoreOwnerResource::class;
+    protected static string $resource = MerchantResource::class;
 
     protected function getHeaderActions(): array
     {

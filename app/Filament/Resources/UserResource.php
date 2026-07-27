@@ -56,7 +56,7 @@ class UserResource extends Resource
                     ->options([
                         'customer' => 'Customer / عميل',
                         'admin' => 'Admin / مسؤول',
-                        'store_owner' => 'Store Owner / مالك متجر',
+                        'merchant' => 'Merchant / تاجر',
                     ])
                     ->default('customer')
                     ->reactive()
@@ -68,7 +68,7 @@ class UserResource extends Resource
                     ->searchable()
                     ->preload()
                     ->nullable()
-                    ->visible(fn ($get) => in_array($get('role'), ['store_owner', 'merchant'])),
+                    ->visible(fn ($get) => in_array($get('role'), ['merchant', 'store_owner'])),
 
                 TextInput::make('loyalty_points')
                     ->label('Loyalty Points / نقاط الولاء')
@@ -110,12 +110,12 @@ class UserResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'admin', 'national_admin' => 'Admin / مسؤول',
-                        'store_owner', 'merchant' => 'Store Owner / مالك متجر',
+                        'merchant', 'store_owner' => 'Merchant / تاجر',
                         default => 'Customer / عميل',
                     })
                     ->color(fn (?string $state): string => match ($state) {
                         'admin', 'national_admin' => 'danger',
-                        'store_owner', 'merchant' => 'info',
+                        'merchant', 'store_owner' => 'info',
                         default => 'success',
                     }),
 
@@ -147,7 +147,7 @@ class UserResource extends Resource
                     ->options([
                         'customer' => 'Customers / العملاء',
                         'admin' => 'Admins / المسؤولون',
-                        'store_owner' => 'Store Owners / ملاك المتاجر',
+                        'merchant' => 'Merchants / التجار',
                     ])
                     ->query(function ($query, array $data) {
                         if (empty($data['value'])) {
@@ -157,7 +157,7 @@ class UserResource extends Resource
                         return match ($data['value']) {
                             'customer' => $query->customers(),
                             'admin' => $query->admins(),
-                            'store_owner' => $query->storeOwners(),
+                            'merchant', 'store_owner' => $query->merchants(),
                             default => $query,
                         };
                     }),

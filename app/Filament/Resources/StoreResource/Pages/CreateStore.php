@@ -22,7 +22,7 @@ class CreateStore extends CreateRecord
             $user = User::find($data['existing_owner_id']);
             if ($user) {
                 $user->update([
-                    'role' => 'store_owner',
+                    'role' => 'merchant',
                     'store_id' => $store->id,
                 ]);
             }
@@ -32,7 +32,7 @@ class CreateStore extends CreateRecord
                 'email' => $data['new_owner_email'],
                 'phone' => $data['new_owner_phone'] ?? null,
                 'password' => $data['new_owner_password'],
-                'role' => 'store_owner',
+                'role' => 'merchant',
                 'store_id' => $store->id,
                 'is_active' => true,
             ]);
