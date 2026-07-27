@@ -29,7 +29,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // 3. Merchant / Store Owner Operations
-    Route::prefix('merchant')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('merchant')->middleware(['auth:sanctum', 'abilities:role:merchant'])->group(function () {
         Route::get('dashboard', [MerchantController::class, 'dashboard']);
         Route::post('qr/validate', [QrController::class, 'validateQr']);
         Route::get('history', [MerchantController::class, 'history']);
