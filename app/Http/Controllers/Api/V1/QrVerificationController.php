@@ -17,6 +17,12 @@ class QrVerificationController extends Controller
     /**
      * POST /api/v1/merchant/verify-qr
      * Atomically verifies QR token, checks single-use status, marks redemption, and deducts Redemption Fee from merchant wallet.
+     * Returns strict HTTP status codes:
+     * - 200 OK: Redemption successful
+     * - 400 Bad Request: ALREADY_REDEEMED
+     * - 402 Payment Required: INSUFFICIENT_FEE_BALANCE
+     * - 404 Not Found: RESOURCE_NOT_FOUND
+     * - 422 Unprocessable Entity: EXPIRED_COUPON or Validation Error
      */
     public function verifyQr(VerifyQrRequest $request): JsonResponse
     {
@@ -26,10 +32,8 @@ class QrVerificationController extends Controller
         if (! $store) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'STORE_NOT_FOUND',
-                    'message' => 'Merchant store context not found for logged in staff user.',
-                ],
+                'message' => 'Resource not found',
+                'error_code' => 'RESOURCE_NOT_FOUND',
             ], 404);
         }
 
@@ -44,7 +48,7 @@ class QrVerificationController extends Controller
             }
         }
 
-        // 1. Locate Coupon
+        // 1. Locate Coupon in database using real query
         $coupon = Coupon::with(['offer', 'user'])
             ->where('qr_token', $qrTokenInput)
             ->orWhere('code', $parsedCode)
@@ -53,34 +57,28 @@ class QrVerificationController extends Controller
         if (! $coupon) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'INVALID_TOKEN',
-                    'message' => 'Invalid or unrecognized QR coupon token.',
-                ],
+                'message' => 'Resource not found',
+                'error_code' => 'RESOURCE_NOT_FOUND',
             ], 404);
         }
 
-        // 2. Validate Single-Use / Already Redeemed status
+        // 2. Validate Single-Use / Already Redeemed status -> HTTP 400 Bad Request
         if ($coupon->isRedeemed()) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'ALREADY_REDEEMED',
-                    'message' => 'This single-use coupon pass has already been redeemed.',
-                    'redeemed_at' => $coupon->redeemed_at?->toIso8601String(),
-                ],
-            ], 422);
+                'message' => 'This single-use coupon pass has already been redeemed.',
+                'error_code' => 'ALREADY_REDEEMED',
+                'redeemed_at' => $coupon->redeemed_at?->toIso8601String(),
+            ], 400);
         }
 
-        // 3. Validate Expiration
+        // 3. Validate Expiration -> HTTP 422 Unprocessable Entity
         if ($coupon->isExpired()) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'EXPIRED_COUPON',
-                    'message' => 'This coupon pass has expired and is no longer valid.',
-                    'expires_at' => $coupon->expires_at?->toIso8601String(),
-                ],
+                'message' => 'This coupon pass has expired.',
+                'error_code' => 'EXPIRED_COUPON',
+                'expires_at' => $coupon->expires_at?->toIso8601String(),
             ], 422);
         }
 
@@ -91,9 +89,9 @@ class QrVerificationController extends Controller
                 // Fetch & lock merchant wallet
                 $wallet = $store->getOrCreateWallet();
 
-                // Check wallet balance for redemption fee
+                // Check wallet balance for redemption fee -> Throws INSUFFICIENT_FEE_BALANCE
                 if ((float) $wallet->balance < $redemptionFee) {
-                    throw new Exception('INSUFFICIENT_MERCHANT_BALANCE');
+                    throw new Exception('INSUFFICIENT_FEE_BALANCE');
                 }
 
                 // Deduct redemption fee from merchant wallet
@@ -140,27 +138,23 @@ class QrVerificationController extends Controller
                 'success' => true,
                 'message' => 'QR pass verified & redeemed successfully. Redemption fee deducted from merchant wallet.',
                 'data' => new RedemptionResource($redemption->load(['coupon', 'store', 'user', 'staffUser'])),
-            ]);
+            ], 200);
 
         } catch (Exception $e) {
-            if ($e->getMessage() === 'INSUFFICIENT_MERCHANT_BALANCE') {
+            if ($e->getMessage() === 'INSUFFICIENT_FEE_BALANCE') {
                 return response()->json([
                     'success' => false,
-                    'error' => [
-                        'code' => 'INSUFFICIENT_MERCHANT_BALANCE',
-                        'message' => "Merchant wallet balance is insufficient for redemption fee of {$redemptionFee} D.L.",
-                        'required_amount' => $redemptionFee,
-                        'current_balance' => (float) ($store->wallet->balance ?? $store->balance ?? 0.00),
-                    ],
-                ], 422);
+                    'message' => "Merchant platform balance is insufficient for redemption fee of {$redemptionFee} D.L.",
+                    'error_code' => 'INSUFFICIENT_FEE_BALANCE',
+                    'required_amount' => $redemptionFee,
+                    'current_balance' => (float) ($store->wallet->balance ?? $store->balance ?? 0.00),
+                ], 402);
             }
 
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'REDEMPTION_FAILED',
-                    'message' => $e->getMessage(),
-                ],
+                'message' => $e->getMessage(),
+                'error_code' => 'REDEMPTION_FAILED',
             ], 500);
         }
     }

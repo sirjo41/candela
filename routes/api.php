@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
 
     // 2. Offers & Campaigns Engine (Public Feed Discovery)
     Route::get('offers', [OfferController::class, 'index']);
+    Route::get('offers/{id}', [OfferController::class, 'show']);
     Route::get('customer/campaigns', [CustomerController::class, 'campaigns']);
     Route::get('customer/stores', [CustomerController::class, 'stores']);
 

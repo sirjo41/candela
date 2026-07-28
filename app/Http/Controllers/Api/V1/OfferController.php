@@ -42,6 +42,28 @@ class OfferController extends Controller
     }
 
     /**
+     * GET /api/v1/offers/{id}
+     * Find single offer by ID with strict Eloquent lookup and 404 response.
+     */
+    public function show(int $id): JsonResponse
+    {
+        $offer = Offer::with('store')->active()->find($id);
+
+        if (! $offer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Resource not found',
+                'error_code' => 'RESOURCE_NOT_FOUND',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => new OfferResource($offer),
+        ]);
+    }
+
+    /**
      * POST /api/v1/merchant/offers/create
      * Creates a new offer and automatically checks/deducts the Creation Fee from merchant's wallet.
      */
@@ -53,10 +75,8 @@ class OfferController extends Controller
         if (! $store) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'STORE_NOT_FOUND',
-                    'message' => 'No active merchant store associated with this staff account.',
-                ],
+                'message' => 'Resource not found',
+                'error_code' => 'RESOURCE_NOT_FOUND',
             ], 404);
         }
 
@@ -65,20 +85,20 @@ class OfferController extends Controller
 
         try {
             $offer = DB::transaction(function () use ($request, $store, $creationFee, $redemptionFee) {
-                // 1. Fetch & lock Merchant Wallet
+                // Fetch & lock Merchant Wallet
                 $wallet = $store->getOrCreateWallet();
 
-                // 2. Check sufficient balance for Creation Fee
+                // Check sufficient balance for Creation Fee
                 if ((float) $wallet->balance < $creationFee) {
-                    throw new Exception('INSUFFICIENT_MERCHANT_BALANCE');
+                    throw new Exception('INSUFFICIENT_FEE_BALANCE');
                 }
 
-                // 3. Dynamic discount & final price calculation in D.L
+                // Dynamic discount & final price calculation in D.L
                 $originalPrice = (float) $request->original_price;
                 $discountRate = (float) $request->discount_rate;
                 $finalPrice = Offer::calculateFinalPrice($originalPrice, $discountRate);
 
-                // 4. Create Offer record
+                // Create Offer record
                 $createdOffer = Offer::create([
                     'store_id' => $store->id,
                     'title' => $request->title,
@@ -98,7 +118,7 @@ class OfferController extends Controller
                     'is_active' => true,
                 ]);
 
-                // 5. Atomically deduct Creation Fee from Merchant Wallet
+                // Atomically deduct Creation Fee from Merchant Wallet
                 $wallet->deduct(
                     $creationFee,
                     'offer_creation_fee',
@@ -121,24 +141,20 @@ class OfferController extends Controller
             ], 201);
 
         } catch (Exception $e) {
-            if ($e->getMessage() === 'INSUFFICIENT_MERCHANT_BALANCE') {
+            if ($e->getMessage() === 'INSUFFICIENT_FEE_BALANCE') {
                 return response()->json([
                     'success' => false,
-                    'error' => [
-                        'code' => 'INSUFFICIENT_MERCHANT_BALANCE',
-                        'message' => "Merchant wallet balance is insufficient for the offer creation fee of {$creationFee} D.L.",
-                        'required_amount' => $creationFee,
-                        'current_balance' => (float) ($store->wallet->balance ?? $store->balance ?? 0.00),
-                    ],
-                ], 422);
+                    'message' => "Merchant wallet balance is insufficient for offer creation fee of {$creationFee} D.L.",
+                    'error_code' => 'INSUFFICIENT_FEE_BALANCE',
+                    'required_amount' => $creationFee,
+                    'current_balance' => (float) ($store->wallet->balance ?? $store->balance ?? 0.00),
+                ], 402);
             }
 
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'OFFER_CREATION_FAILED',
-                    'message' => $e->getMessage(),
-                ],
+                'message' => $e->getMessage(),
+                'error_code' => 'OFFER_CREATION_FAILED',
             ], 500);
         }
     }
