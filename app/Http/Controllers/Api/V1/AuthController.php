@@ -65,19 +65,25 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $loginInput = $validated['login'] ?? $validated['phone'] ?? $validated['email'] ?? null;
+        $loginInput = trim($validated['login'] ?? $validated['phone'] ?? $validated['email'] ?? '');
 
-        if (! $loginInput) {
+        if (empty($loginInput)) {
             throw ValidationException::withMessages([
                 'login' => ['Please provide a phone number or email address.'],
             ]);
         }
 
+        $cleanDigits = preg_replace('/[^\d]/', '', $loginInput);
+
         $user = User::query()
             ->with('store')
-            ->where(function ($query) use ($loginInput) {
+            ->where(function ($query) use ($loginInput, $cleanDigits) {
                 $query->where('phone', $loginInput)
                     ->orWhere('email', $loginInput);
+
+                if (strlen($cleanDigits) >= 4) {
+                    $query->orWhere('phone', 'LIKE', "%{$cleanDigits}%");
+                }
             })
             ->first();
 
