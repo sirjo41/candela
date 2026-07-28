@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Offer\CreateOfferRequest;
 use App\Http\Requests\Api\V1\Offer\FilterOfferRequest;
 use App\Http\Resources\Api\V1\OfferResource;
+use App\Models\Coupon;
 use App\Models\Offer;
 use App\Models\Store;
 use Exception;
@@ -65,7 +66,7 @@ class OfferController extends Controller
 
     /**
      * POST /api/v1/merchant/offers/create
-     * Creates a new offer and automatically checks/deducts the Creation Fee from merchant's wallet.
+     * Creates a new offer and coupon in MySQL and automatically deducts the Creation Fee from merchant's wallet.
      */
     public function create(CreateOfferRequest $request): JsonResponse
     {
@@ -98,7 +99,7 @@ class OfferController extends Controller
                 $discountRate = (float) $request->discount_rate;
                 $finalPrice = Offer::calculateFinalPrice($originalPrice, $discountRate);
 
-                // Create Offer record
+                // Create Offer record in MySQL
                 $createdOffer = Offer::create([
                     'store_id' => $store->id,
                     'title' => $request->title,
@@ -114,7 +115,20 @@ class OfferController extends Controller
                     'branch_location' => $request->branch_location ?? $store->address ?? 'Downtown Branch',
                     'latitude' => $request->latitude ?? $store->latitude,
                     'longitude' => $request->longitude ?? $store->longitude,
-                    'valid_until' => $request->valid_until,
+                    'valid_until' => $request->valid_until ?? now()->addDays(30),
+                    'is_active' => true,
+                ]);
+
+                // Create corresponding Coupon record in MySQL for Filament Admin Panel
+                Coupon::create([
+                    'store_id' => $store->id,
+                    'offer_id' => $createdOffer->id,
+                    'title' => $createdOffer->title,
+                    'code' => 'CPN-' . $createdOffer->id . '-' . strtoupper(substr(md5(uniqid()), 0, 4)),
+                    'discount_type' => 'percentage',
+                    'discount_value' => $discountRate,
+                    'redemption_fee' => $redemptionFee,
+                    'expires_at' => $request->valid_until ?? now()->addDays(30),
                     'is_active' => true,
                 ]);
 
@@ -157,5 +171,24 @@ class OfferController extends Controller
                 'error_code' => 'OFFER_CREATION_FAILED',
             ], 500);
         }
+    }
+
+    /**
+     * DELETE /api/v1/merchant/offers/{id}
+     * Deletes an offer and its associated coupons from MySQL database.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $offer = Offer::find($id);
+
+        if ($offer) {
+            Coupon::where('offer_id', $offer->id)->delete();
+            $offer->delete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Offer deleted successfully from database.',
+        ]);
     }
 }

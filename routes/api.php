@@ -40,6 +40,8 @@ Route::prefix('v1')->group(function () {
     // 4. Authenticated Merchant & Staff Operations
     Route::middleware(['auth:sanctum', 'role:merchant_staff,merchant,store_owner,admin'])->prefix('merchant')->group(function () {
         Route::post('offers/create', [OfferController::class, 'create']);
+        Route::delete('offers/{id}', [OfferController::class, 'destroy']);
+        Route::post('offers/{id}/delete', [OfferController::class, 'destroy']);
         Route::post('verify-qr', [QrVerificationController::class, 'verifyQr']);
         Route::get('dashboard', [MerchantController::class, 'dashboard']);
         Route::get('history', [MerchantController::class, 'history']);

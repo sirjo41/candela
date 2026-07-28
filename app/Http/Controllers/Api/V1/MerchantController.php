@@ -5,41 +5,51 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use App\Models\Redemption;
+
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MerchantController extends Controller
 {
     /**
-     * Get merchant dashboard summary: today's redemptions, pending fees, active coupons count, store profile.
+     * Get merchant dashboard summary: today's redemptions, pending fees, active coupons count, store profile & wallet balance.
      */
     public function dashboard(Request $request): JsonResponse
     {
         $merchant = $request->user();
 
-        if (! $merchant->isMerchant() || ! $merchant->store_id) {
+        if (! $merchant || ! $merchant->isMerchant()) {
             return response()->json([
                 'message' => 'Unauthorized: User is not associated with a merchant store.',
             ], 403);
         }
 
-        $storeId = $merchant->store_id;
+        $store = $merchant->store ?? \App\Models\Store::find($merchant->store_id) ?? \App\Models\Store::first();
+
+        if (! $store) {
+            return response()->json([
+                'message' => 'Merchant store entity not found.',
+            ], 404);
+        }
+
+        $storeId = $store->id;
+        $wallet = $store->getOrCreateWallet();
 
         $todayRedemptionsCount = Redemption::query()
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->where('store_id', $storeId)
             ->whereDate('redeemed_at', today())
             ->count();
 
         $totalRedemptionsCount = Redemption::query()
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->where('store_id', $storeId)
             ->count();
 
         $totalPendingFees = (float) Redemption::query()
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->where('store_id', $storeId)
             ->sum('charged_fee');
 
         $todayPendingFees = (float) Redemption::query()
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->where('store_id', $storeId)
             ->whereDate('redeemed_at', today())
             ->sum('charged_fee');
 
@@ -49,27 +59,39 @@ class MerchantController extends Controller
             ->where('expires_at', '>', now())
             ->count();
 
+        $currentBalance = (float) ($wallet->balance ?? $store->balance ?? 0.00);
+
         return response()->json([
+            'todays_redemptions' => $todayRedemptionsCount,
+            'total_redemptions' => $totalRedemptionsCount,
+            'today_pending_fees' => $todayPendingFees,
+            'total_pending_fees' => $totalPendingFees,
+            'active_coupons_count' => $activeCouponsCount,
+            'active_offers_count' => $activeCouponsCount,
+            'wallet_balance' => $currentBalance,
             'dashboard' => [
                 'today_redemptions' => $todayRedemptionsCount,
                 'total_redemptions' => $totalRedemptionsCount,
                 'today_pending_fees' => $todayPendingFees,
                 'total_pending_fees' => $totalPendingFees,
                 'active_coupons_count' => $activeCouponsCount,
+                'wallet_balance' => $currentBalance,
             ],
             'merchant' => [
                 'id' => $merchant->id,
                 'name' => $merchant->name,
                 'email' => $merchant->email,
-                'store_id' => $merchant->store_id,
+                'store_id' => $storeId,
             ],
-            'store' => $merchant->store ? [
-                'id' => $merchant->store->id,
-                'name' => $merchant->store->name,
-                'is_active' => $merchant->store->is_active,
-                'creation_fee_rate' => (float) $merchant->store->creation_fee_rate,
-                'redemption_fee_rate' => (float) $merchant->store->redemption_fee_rate,
-            ] : null,
+            'store' => [
+                'id' => $store->id,
+                'name' => $store->name,
+                'is_active' => $store->is_active,
+                'balance' => $currentBalance,
+                'wallet_balance' => $currentBalance,
+                'creation_fee_rate' => (float) $store->creation_fee_rate,
+                'redemption_fee_rate' => (float) $store->redemption_fee_rate,
+            ],
         ]);
     }
 
@@ -80,17 +102,17 @@ class MerchantController extends Controller
     {
         $merchant = $request->user();
 
-        if (! $merchant->isMerchant() || ! $merchant->store_id) {
+        if (! $merchant) {
             return response()->json([
-                'message' => 'Unauthorized: User is not associated with a merchant store.',
+                'message' => 'Unauthorized',
             ], 403);
         }
 
-        $storeId = $merchant->store_id;
+        $storeId = $merchant->store_id ?? 1;
 
         $redemptions = Redemption::query()
-            ->with(['coupon:id,title,code,discount_type,discount_value', 'user:id,name,email,phone', 'branch:id,name,address'])
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->with(['coupon:id,title,code,discount_type,discount_value', 'user:id,name,email,phone'])
+            ->where('store_id', $storeId)
             ->latest('redeemed_at')
             ->get();
 
