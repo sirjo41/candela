@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
 class Coupon extends Model
 {
@@ -27,7 +26,7 @@ class Coupon extends Model
         'redemption_fee',
         'max_uses',
         'uses_count',
-        'status',
+        'status', // 'active', 'claimed', 'redeemed', 'used', 'expired'
         'expires_at',
         'redeemed_at',
         'is_active',
@@ -68,11 +67,11 @@ class Coupon extends Model
     }
 
     /**
-     * Check if the coupon is redeemed.
+     * Check if the coupon is redeemed or used.
      */
     public function isRedeemed(): bool
     {
-        return $this->status === 'redeemed' || $this->redeemed_at !== null;
+        return in_array($this->status, ['redeemed', 'used']) || $this->redeemed_at !== null;
     }
 
     /**
