@@ -30,6 +30,9 @@ return new class extends Migration
             if (!Schema::hasColumn('redemptions', 'store_id')) {
                 $table->foreignId('store_id')->nullable()->after('coupon_id')->constrained('stores')->cascadeOnDelete();
             }
+            if (!Schema::hasColumn('redemptions', 'offer_id')) {
+                $table->foreignId('offer_id')->nullable()->after('store_id')->constrained('offers')->nullOnDelete();
+            }
             if (!Schema::hasColumn('redemptions', 'staff_user_id')) {
                 $table->foreignId('staff_user_id')->nullable()->after('user_id')->constrained('users')->nullOnDelete();
             }
@@ -49,7 +52,7 @@ return new class extends Migration
         });
 
         Schema::table('redemptions', function (Blueprint $table) {
-            $table->dropColumn(['store_id', 'staff_user_id', 'qr_token', 'status']);
+            $table->dropColumn(['store_id', 'offer_id', 'staff_user_id', 'qr_token', 'status']);
         });
     }
 };
