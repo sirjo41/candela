@@ -47,32 +47,33 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        $query = User::query();
-        if ($request->filled('email')) {
-            $query->where('email', strtolower($request->email));
-        } else {
-            $query->where('phone', $request->phone);
+        $input = trim($request->login ?? $request->email ?? $request->phone ?? '');
+
+        if (empty($input)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email or phone number is required.',
+                'error_code' => 'VALIDATION_ERROR',
+            ], 422);
         }
 
-        $user = $query->first();
+        $user = User::where('email', strtolower($input))
+            ->orWhere('phone', $input)
+            ->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'INVALID_CREDENTIALS',
-                    'message' => 'Invalid authentication credentials provided.',
-                ],
+                'message' => 'Invalid email/phone or password.',
+                'error_code' => 'INVALID_CREDENTIALS',
             ], 401);
         }
 
         if (! $user->is_active) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'ACCOUNT_SUSPENDED',
-                    'message' => 'User account has been deactivated.',
-                ],
+                'message' => 'User account has been deactivated.',
+                'error_code' => 'ACCOUNT_SUSPENDED',
             ], 403);
         }
 
@@ -87,7 +88,7 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ],
-        ]);
+        ], 200);
     }
 
     /**
@@ -95,32 +96,33 @@ class AuthController extends Controller
      */
     public function loginMerchant(MerchantLoginRequest $request): JsonResponse
     {
-        $query = User::query();
-        if ($request->filled('email')) {
-            $query->where('email', strtolower($request->email));
-        } else {
-            $query->where('phone', $request->phone);
+        $input = trim($request->login ?? $request->email ?? $request->phone ?? '');
+
+        if (empty($input)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email or phone number is required.',
+                'error_code' => 'VALIDATION_ERROR',
+            ], 422);
         }
 
-        $user = $query->first();
+        $user = User::where('email', strtolower($input))
+            ->orWhere('phone', $input)
+            ->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'INVALID_CREDENTIALS',
-                    'message' => 'Invalid merchant credentials.',
-                ],
+                'message' => 'Invalid merchant email/phone or password.',
+                'error_code' => 'INVALID_CREDENTIALS',
             ], 401);
         }
 
         if (! $user->isMerchant()) {
             return response()->json([
                 'success' => false,
-                'error' => [
-                    'code' => 'UNAUTHORIZED_MERCHANT',
-                    'message' => 'User is not registered as a merchant staff or owner.',
-                ],
+                'message' => 'User is not registered as a merchant staff or owner.',
+                'error_code' => 'UNAUTHORIZED_MERCHANT',
             ], 403);
         }
 
@@ -140,6 +142,6 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ],
-        ]);
+        ], 200);
     }
 }
