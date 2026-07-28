@@ -95,7 +95,8 @@ class CustomerController extends Controller
                 continue;
             }
 
-            $isExpired = $claimed->status === 'expired' || ($coupon->expires_at && \Illuminate\Support\Carbon::parse($coupon->expires_at)->isPast());
+            $isRedeemed = $claimed->status === 'redeemed' || $coupon->status === 'redeemed' || $claimed->redeemed_at !== null || $coupon->redeemed_at !== null;
+            $isExpired = $claimed->status === 'expired' || $coupon->status === 'expired' || ($coupon->expires_at && \Illuminate\Support\Carbon::parse($coupon->expires_at)->isPast());
             $store = $coupon->store;
             $logoUrl = $this->formatLogoUrl($store?->logo);
             $storeName = $store?->name ?? 'Candela Partner Store';
@@ -108,12 +109,13 @@ class CustomerController extends Controller
                 'store' => $storeName,
                 'store_name' => $storeName,
                 'store_logo_url' => $logoUrl,
-                'status' => $claimed->status === 'redeemed' ? 'used' : ($isExpired ? 'expired' : 'active'),
+                'status' => $isRedeemed ? 'used' : ($isExpired ? 'expired' : 'active'),
                 'expires' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : '2026-12-31',
                 'claimed_at' => $claimed->claimed_at ? \Illuminate\Support\Carbon::parse($claimed->claimed_at)->format('Y-m-d H:i') : null,
+                'redeemed_at' => $coupon->redeemed_at ?? $claimed->redeemed_at,
             ];
 
-            if ($claimed->status === 'redeemed') {
+            if ($isRedeemed) {
                 $used[] = $formattedItem;
             } elseif ($isExpired) {
                 $expired[] = $formattedItem;
@@ -253,6 +255,7 @@ class CustomerController extends Controller
 
     /**
      * Claim/save a coupon or campaign to customer's wallet.
+     * Enforces strict limit of 1 claim per customer per coupon/offer.
      */
     public function claim(Request $request, int $id): JsonResponse
     {
@@ -262,50 +265,83 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        // Check if $id refers to a Coupon or Campaign
+        // Locate Coupon by ID, offer_id, or campaign_id
         $coupon = Coupon::with('store')->find($id);
 
         if (! $coupon) {
-            // Find coupon by campaign_id or create default coupon for campaign
             $campaign = Campaign::with('coupons.store')->find($id);
             if ($campaign && $campaign->coupons->isNotEmpty()) {
                 $coupon = $campaign->coupons->first();
             } else {
-                $store = Store::first();
-                $coupon = Coupon::create([
-                    'store_id' => $store ? $store->id : 1,
-                    'campaign_id' => $id,
-                    'title' => $campaign ? $campaign->title : 'Exclusive Offer',
-                    'code' => 'CPN-' . strtoupper(substr(md5(uniqid()), 0, 8)),
-                    'discount_type' => 'percentage',
-                    'discount_value' => 20,
-                    'expires_at' => now()->addDays(30),
-                    'is_active' => true,
-                ]);
-                $coupon->load('store');
+                $offer = \App\Models\Offer::with('store')->find($id);
+                if ($offer) {
+                    $coupon = Coupon::where('offer_id', $offer->id)->first();
+                    if (! $coupon) {
+                        $coupon = Coupon::create([
+                            'store_id' => $offer->store_id,
+                            'offer_id' => $offer->id,
+                            'title' => $offer->title,
+                            'code' => 'CPN-' . $offer->id . '-' . strtoupper(substr(md5(uniqid()), 0, 4)),
+                            'discount_type' => 'percentage',
+                            'discount_value' => $offer->discount_rate ?? 20,
+                            'redemption_fee' => $offer->redemption_fee ?? 5.00,
+                            'expires_at' => $offer->valid_until ?? now()->addDays(30),
+                            'is_active' => true,
+                            'status' => 'active',
+                        ]);
+                    }
+                } else {
+                    $store = Store::first();
+                    $coupon = Coupon::create([
+                        'store_id' => $store ? $store->id : 1,
+                        'campaign_id' => $id,
+                        'title' => 'Exclusive Promotional Coupon',
+                        'code' => 'CPN-' . strtoupper(substr(md5(uniqid()), 0, 8)),
+                        'discount_type' => 'percentage',
+                        'discount_value' => 20,
+                        'expires_at' => now()->addDays(30),
+                        'is_active' => true,
+                        'status' => 'active',
+                    ]);
+                }
             }
+        }
+
+        // Check if user already claimed this coupon or offer
+        $existingClaim = ClaimedCoupon::where('user_id', $user->id)
+            ->where(function ($q) use ($coupon) {
+                $q->where('coupon_id', $coupon->id);
+                if ($coupon->offer_id) {
+                    $q->orWhereHas('coupon', fn ($cq) => $cq->where('offer_id', $coupon->offer_id));
+                }
+            })
+            ->first();
+
+        if ($existingClaim) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لقد قمت بحجز هذا الكوبون مسبقاً (مسموح بحجز واحد فقط لكل عميل).',
+                'error_code' => 'ALREADY_CLAIMED',
+                'is_claimed' => true,
+                'claimed' => true,
+            ], 400);
         }
 
         if ($coupon->max_uses !== null && $coupon->uses_count >= $coupon->max_uses) {
             return response()->json([
                 'message' => 'Coupon has reached maximum redemptions',
+                'error_code' => 'MAX_USES_REACHED',
             ], 422);
         }
 
-        $claimed = ClaimedCoupon::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'coupon_id' => $coupon->id,
-            ],
-            [
-                'status' => 'claimed',
-                'claimed_at' => now(),
-            ]
-        );
+        $claimed = ClaimedCoupon::create([
+            'user_id' => $user->id,
+            'coupon_id' => $coupon->id,
+            'status' => 'claimed',
+            'claimed_at' => now(),
+        ]);
 
-        if ($claimed->wasRecentlyCreated) {
-            $coupon->increment('uses_count');
-        }
+        $coupon->increment('uses_count');
 
         $store = $coupon->store;
         $logoUrl = $this->formatLogoUrl($store?->logo);
@@ -372,4 +408,3 @@ class CustomerController extends Controller
         ]);
     }
 }
-

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\ClaimedCoupon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -10,6 +11,15 @@ class OfferResource extends JsonResource
     public function toArray(Request $request): array
     {
         $remainingSeconds = $this->valid_until ? max(0, now()->diffInSeconds($this->valid_until, false)) : 0;
+
+        $user = $request->user('sanctum') ?? $request->user();
+        $isClaimed = false;
+
+        if ($user) {
+            $isClaimed = ClaimedCoupon::where('user_id', $user->id)
+                ->whereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))
+                ->exists();
+        }
 
         return [
             'id' => $this->id,
@@ -35,6 +45,8 @@ class OfferResource extends JsonResource
             'valid_until' => $this->valid_until?->toIso8601String(),
             'remaining_seconds' => $remainingSeconds,
             'is_active' => (bool) $this->is_active,
+            'claimed' => $isClaimed,
+            'is_claimed' => $isClaimed,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

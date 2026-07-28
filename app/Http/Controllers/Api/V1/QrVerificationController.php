@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Qr\VerifyQrRequest;
 use App\Http\Resources\Api\V1\RedemptionResource;
+use App\Models\ClaimedCoupon;
 use App\Models\Coupon;
 use App\Models\Offer;
 use App\Models\Redemption;
@@ -18,7 +19,7 @@ class QrVerificationController extends Controller
 {
     /**
      * POST /api/v1/merchant/verify-qr
-     * Atomically verifies QR token, checks single-use status, marks redemption, and deducts Redemption Fee from merchant wallet.
+     * Atomically verifies QR token, checks single-use status, marks redemption, updates customer claimed status to 'redeemed', and deducts Redemption Fee from merchant wallet.
      */
     public function verifyQr(VerifyQrRequest $request): JsonResponse
     {
@@ -62,15 +63,24 @@ class QrVerificationController extends Controller
             ->orWhere('id', is_numeric($parsedCode) ? (int) $parsedCode : 0)
             ->first();
 
+        // Determine valid customer User ID with fallback
+        $targetUserId = null;
+        if ($extractedUserId && User::where('id', $extractedUserId)->exists()) {
+            $targetUserId = $extractedUserId;
+        } elseif ($coupon?->user_id && User::where('id', $coupon->user_id)->exists()) {
+            $targetUserId = $coupon->user_id;
+        } else {
+            $targetUserId = User::where('role', 'customer')->value('id') ?? $staffUser->id;
+        }
+
         // 2. If not found, check Offer or create coupon for verification
         if (! $coupon) {
             $offer = Offer::where('id', is_numeric($parsedCode) ? (int) $parsedCode : 0)->first();
-            $customerUser = $extractedUserId ? User::find($extractedUserId) : User::where('role', 'customer')->first();
 
             $coupon = Coupon::create([
                 'store_id' => $store->id,
                 'offer_id' => $offer ? $offer->id : null,
-                'user_id' => $customerUser ? $customerUser->id : 1,
+                'user_id' => $targetUserId,
                 'title' => $offer ? $offer->title : 'Special Promotional Pass',
                 'code' => $parsedCode,
                 'qr_token' => $qrTokenInput,
@@ -82,6 +92,12 @@ class QrVerificationController extends Controller
                 'status' => 'claimed',
             ]);
             $coupon->load(['offer', 'user']);
+        }
+
+        // Ensure coupon has valid user_id
+        if (! $coupon->user_id) {
+            $coupon->user_id = $targetUserId;
+            $coupon->save();
         }
 
         // 3. Validate Single-Use / Already Redeemed status -> HTTP 400 Bad Request
@@ -107,7 +123,7 @@ class QrVerificationController extends Controller
         $redemptionFee = (float) ($coupon->redemption_fee > 0 ? $coupon->redemption_fee : ($store->redemption_fee_rate ?? 5.00));
 
         try {
-            $redemption = DB::transaction(function () use ($coupon, $store, $staffUser, $redemptionFee, $qrTokenInput) {
+            $redemption = DB::transaction(function () use ($coupon, $store, $staffUser, $targetUserId, $redemptionFee, $qrTokenInput) {
                 // Fetch & lock merchant wallet
                 $wallet = $store->getOrCreateWallet();
 
@@ -135,9 +151,23 @@ class QrVerificationController extends Controller
                 $coupon->uses_count = $coupon->uses_count + 1;
                 $coupon->save();
 
+                // Update customer's claimed coupon record so it moves to "Used" tab in customer wallet
+                ClaimedCoupon::where('user_id', $targetUserId)
+                    ->where(function ($q) use ($coupon) {
+                        $q->where('coupon_id', $coupon->id);
+                        if ($coupon->offer_id) {
+                            $q->orWhereHas('coupon', fn ($cq) => $cq->where('offer_id', $coupon->offer_id));
+                        }
+                    })
+                    ->update([
+                        'status' => 'redeemed',
+                        'redeemed_at' => now(),
+                    ]);
+
                 // Award loyalty points to customer
-                if ($coupon->user) {
-                    $coupon->user->increment('loyalty_points', 50);
+                $customerUser = User::find($targetUserId);
+                if ($customerUser) {
+                    $customerUser->increment('loyalty_points', 50);
                 }
 
                 // Record redemption log
@@ -145,7 +175,7 @@ class QrVerificationController extends Controller
                     'coupon_id' => $coupon->id,
                     'offer_id' => $coupon->offer_id,
                     'store_id' => $store->id,
-                    'user_id' => $coupon->user_id ?? 1,
+                    'user_id' => $targetUserId,
                     'staff_user_id' => $staffUser->id,
                     'qr_code_hash' => hash('sha256', $qrTokenInput),
                     'qr_token' => $qrTokenInput,
