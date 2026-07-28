@@ -19,7 +19,7 @@ return new class extends Migration
                 $table->string('qr_token')->nullable()->unique()->after('code');
             }
             if (!Schema::hasColumn('coupons', 'status')) {
-                $table->enum('status', ['active', 'redeemed', 'expired'])->default('active')->after('qr_token');
+                $table->string('status', 30)->default('active')->after('qr_token');
             }
             if (!Schema::hasColumn('coupons', 'redeemed_at')) {
                 $table->timestamp('redeemed_at')->nullable()->after('expires_at');
@@ -37,7 +37,7 @@ return new class extends Migration
                 $table->string('qr_token')->nullable()->after('qr_code_hash');
             }
             if (!Schema::hasColumn('redemptions', 'status')) {
-                $table->string('status')->default('completed')->after('charged_fee');
+                $table->string('status', 30)->default('completed')->after('charged_fee');
             }
         });
     }
