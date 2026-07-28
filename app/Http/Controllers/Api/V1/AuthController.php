@@ -3,154 +3,143 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Auth\LoginRequest;
+use App\Http\Requests\Api\V1\Auth\MerchantLoginRequest;
+use App\Http\Requests\Api\V1\Auth\RegisterCustomerRequest;
+use App\Http\Resources\Api\V1\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     /**
-     * Register a new customer.
+     * Register a new Customer End-User.
      */
-    public function registerCustomer(Request $request): JsonResponse
+    public function registerCustomer(RegisterCustomerRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'string', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['required', 'string', 'max:50', 'unique:users,phone'],
-            'password' => ['required', 'string', 'min:8'],
-        ]);
-
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'] ?? $validated['phone'].'@candela.local',
-            'phone' => $validated['phone'],
-            'password' => Hash::make($validated['password']),
+            'name' => $request->name,
+            'email' => strtolower($request->email),
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
             'role' => 'customer',
+            'is_merchant' => false,
             'is_active' => true,
-            'loyalty_points' => 0,
+            'loyalty_points' => 100, // 100 bonus welcome points
         ]);
 
-        $token = $user->createToken('customer-api-token', ['role:customer'])->plainTextToken;
+        $token = $user->createToken('customer_token', ['role:customer'])->plainTextToken;
 
         return response()->json([
-            'message' => 'Customer registered successfully',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'is_customer' => $user->is_customer,
-                'is_merchant' => $user->is_merchant,
-                'is_admin' => $user->is_admin,
-                'loyalty_points' => $user->loyalty_points,
+            'success' => true,
+            'message' => 'Customer account registered successfully.',
+            'data' => [
+                'user' => new UserResource($user),
+                'access_token' => $token,
+                'token_type' => 'Bearer',
             ],
         ], 201);
     }
 
     /**
-     * Unified login method for both customer and merchant accounts.
+     * General Authentication Login (Customers or Admins).
      */
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'login' => ['nullable', 'string'],
-            'phone' => ['nullable', 'string'],
-            'email' => ['nullable', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $loginInput = trim($validated['login'] ?? $validated['phone'] ?? $validated['email'] ?? '');
-
-        if (empty($loginInput)) {
-            throw ValidationException::withMessages([
-                'login' => ['Please provide a phone number or email address.'],
-            ]);
+        $query = User::query();
+        if ($request->filled('email')) {
+            $query->where('email', strtolower($request->email));
+        } else {
+            $query->where('phone', $request->phone);
         }
 
-        $cleanDigits = preg_replace('/[^\d]/', '', $loginInput);
+        $user = $query->first();
 
-        $user = User::query()
-            ->with('store')
-            ->where(function ($query) use ($loginInput, $cleanDigits) {
-                $query->where('phone', $loginInput)
-                    ->orWhere('email', $loginInput);
-
-                if (strlen($cleanDigits) >= 4) {
-                    $query->orWhere('phone', 'LIKE', "%{$cleanDigits}%");
-                }
-            })
-            ->first();
-
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Invalid credentials',
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_CREDENTIALS',
+                    'message' => 'Invalid authentication credentials provided.',
+                ],
             ], 401);
         }
 
         if (! $user->is_active) {
             return response()->json([
-                'message' => 'User account is deactivated',
+                'success' => false,
+                'error' => [
+                    'code' => 'ACCOUNT_SUSPENDED',
+                    'message' => 'User account has been deactivated.',
+                ],
             ], 403);
         }
 
-        // Assign token abilities dynamically based on role/flags
-        $abilities = [];
-        if ($user->is_merchant) {
-            $abilities[] = 'role:merchant';
-        }
-        if ($user->is_customer) {
-            $abilities[] = 'role:customer';
-        }
-        if ($user->is_admin) {
-            $abilities[] = 'role:admin';
-        }
-
-        $token = $user->createToken('auth-api-token', $abilities)->plainTextToken;
+        $roleAbility = 'role:' . ($user->role ?? 'customer');
+        $token = $user->createToken($request->device_name ?? 'mobile_device', [$roleAbility])->plainTextToken;
 
         return response()->json([
-            'message' => 'Login successful',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'is_customer' => $user->is_customer,
-                'is_merchant' => $user->is_merchant,
-                'is_admin' => $user->is_admin,
-                'store_id' => $user->store_id,
-                'store_name' => $user->store?->name,
-                'loyalty_points' => $user->loyalty_points,
+            'success' => true,
+            'message' => 'Authentication successful.',
+            'data' => [
+                'user' => new UserResource($user),
+                'access_token' => $token,
+                'token_type' => 'Bearer',
             ],
-            'store' => $user->store ? [
-                'id' => $user->store->id,
-                'name' => $user->store->name,
-                'is_active' => $user->store->is_active,
-            ] : null,
         ]);
     }
 
     /**
-     * Customer login alias.
+     * Merchant Staff & Store Owner Login.
      */
-    public function loginCustomer(Request $request): JsonResponse
+    public function loginMerchant(MerchantLoginRequest $request): JsonResponse
     {
-        return $this->login($request);
-    }
+        $query = User::query();
+        if ($request->filled('email')) {
+            $query->where('email', strtolower($request->email));
+        } else {
+            $query->where('phone', $request->phone);
+        }
 
-    /**
-     * Merchant login alias.
-     */
-    public function loginMerchant(Request $request): JsonResponse
-    {
-        return $this->login($request);
+        $user = $query->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_CREDENTIALS',
+                    'message' => 'Invalid merchant credentials.',
+                ],
+            ], 401);
+        }
+
+        if (! $user->isMerchant()) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'UNAUTHORIZED_MERCHANT',
+                    'message' => 'User is not registered as a merchant staff or owner.',
+                ],
+            ], 403);
+        }
+
+        $token = $user->createToken($request->device_name ?? 'merchant_terminal', ['role:merchant_staff', 'role:merchant'])->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Merchant terminal login successful.',
+            'data' => [
+                'user' => new UserResource($user),
+                'store' => $user->store ? [
+                    'id' => $user->store->id,
+                    'name' => $user->store->name,
+                    'balance' => (float) ($user->store->wallet->balance ?? $user->store->balance ?? 0.00),
+                    'currency' => 'D.L',
+                ] : null,
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+            ],
+        ]);
     }
 }

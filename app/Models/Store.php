@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Store extends Model
@@ -14,11 +15,25 @@ class Store extends Model
 
     protected $fillable = [
         'name',
+        'business_registration',
         'logo',
         'phone',
+        'address',
+        'latitude',
+        'longitude',
         'is_active',
         'creation_fee_rate',
         'redemption_fee_rate',
+        'balance',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'creation_fee_rate' => 'decimal:2',
+        'redemption_fee_rate' => 'decimal:2',
+        'balance' => 'decimal:2',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function merchants(): HasMany
@@ -36,28 +51,44 @@ class Store extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function offers(): HasMany
+    {
+        return $this->hasMany(Offer::class);
+    }
+
     public function coupons(): HasMany
     {
         return $this->hasMany(Coupon::class);
     }
 
-    public function redemptions(): HasManyThrough
+    public function redemptions(): HasMany
     {
-        return $this->hasManyThrough(Redemption::class, Coupon::class);
+        return $this->hasMany(Redemption::class);
     }
 
-    public function getTotalCreationFeesAttribute(): float
+    public function wallet(): HasOne
     {
-        return (float) $this->coupons()->sum('creation_fee');
+        return $this->hasOne(Wallet::class, 'store_id');
     }
 
-    public function getTotalRedemptionFeesAttribute(): float
+    public function feeTransactions(): HasMany
     {
-        return (float) $this->redemptions()->sum('charged_fee');
+        return $this->hasMany(FeeTransaction::class, 'store_id');
     }
 
-    public function getGrandTotalFeesAttribute(): float
+    /**
+     * Get or create platform wallet for merchant.
+     */
+    public function getOrCreateWallet(): Wallet
     {
-        return $this->total_creation_fees + $this->total_redemption_fees;
+        if ($this->wallet) {
+            return $this->wallet;
+        }
+
+        return $this->wallet()->create([
+            'balance' => $this->balance ?? 500.00,
+            'currency' => 'D.L',
+            'status' => 'active',
+        ]);
     }
 }
