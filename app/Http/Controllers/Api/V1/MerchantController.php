@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
+use App\Models\Offer;
 use App\Models\Redemption;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,12 +53,17 @@ class MerchantController extends Controller
             ->whereDate('redeemed_at', today())
             ->sum('charged_fee');
 
+        $activeOffersCount = Offer::query()
+            ->where('store_id', $storeId)
+            ->where('is_active', true)
+            ->count();
+
         $activeCouponsCount = Coupon::query()
             ->where('store_id', $storeId)
             ->where('is_active', true)
-            ->where('expires_at', '>', now())
             ->count();
 
+        $activeCount = max($activeOffersCount, $activeCouponsCount);
         $currentBalance = (float) ($wallet->balance ?? $store->balance ?? 0.00);
 
         return response()->json([
@@ -66,15 +71,15 @@ class MerchantController extends Controller
             'total_redemptions' => $totalRedemptionsCount,
             'today_pending_fees' => $todayPendingFees,
             'total_pending_fees' => $totalPendingFees,
-            'active_coupons_count' => $activeCouponsCount,
-            'active_offers_count' => $activeCouponsCount,
+            'active_coupons_count' => $activeCount,
+            'active_offers_count' => $activeCount,
             'wallet_balance' => $currentBalance,
             'dashboard' => [
                 'today_redemptions' => $todayRedemptionsCount,
                 'total_redemptions' => $totalRedemptionsCount,
                 'today_pending_fees' => $todayPendingFees,
                 'total_pending_fees' => $totalPendingFees,
-                'active_coupons_count' => $activeCouponsCount,
+                'active_coupons_count' => $activeCount,
                 'wallet_balance' => $currentBalance,
             ],
             'merchant' => [
