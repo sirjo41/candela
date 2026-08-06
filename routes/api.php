@@ -28,11 +28,16 @@ Route::prefix('v1')->group(function () {
     Route::get('offers', [OfferController::class, 'index']);
     Route::get('offers/{id}', [OfferController::class, 'show']);
     Route::get('customer/campaigns', [CustomerController::class, 'campaigns']);
+    Route::get('customer/coupons', [CustomerController::class, 'coupons']);
     Route::get('customer/stores', [CustomerController::class, 'stores']);
 
     // 3. Authenticated Customer Endpoints
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
         Route::post('campaigns/{id}/claim', [CustomerController::class, 'claim']);
+        Route::post('coupons/{id}/claim', [CustomerController::class, 'claim']);
+        Route::get('qr-pass/{couponId}', [CustomerController::class, 'showQrPass']);
+        Route::get('rewards', [CustomerController::class, 'rewards']);
+        Route::post('rewards/redeem', [CustomerController::class, 'redeemPoints']);
         Route::get('wallet', [CustomerController::class, 'wallet']);
         Route::get('profile', [CustomerController::class, 'profile']);
     });

@@ -30,12 +30,17 @@ class AuthController extends Controller
         ]);
 
         $token = $user->createToken('customer_token', ['role:customer'])->plainTextToken;
+        $userResource = new UserResource($user);
+        $userData = $userResource->resolve();
 
         return response()->json([
             'success' => true,
             'message' => 'Customer account registered successfully.',
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $userData,
             'data' => [
-                'user' => new UserResource($user),
+                'user' => $userData,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ],
@@ -79,12 +84,17 @@ class AuthController extends Controller
 
         $roleAbility = 'role:' . ($user->role ?? 'customer');
         $token = $user->createToken($request->device_name ?? 'mobile_device', [$roleAbility])->plainTextToken;
+        $userResource = new UserResource($user);
+        $userData = $userResource->resolve();
 
         return response()->json([
             'success' => true,
             'message' => 'Authentication successful.',
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $userData,
             'data' => [
-                'user' => new UserResource($user),
+                'user' => $userData,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ],
@@ -123,22 +133,31 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'User is not registered as a merchant staff or owner.',
                 'error_code' => 'UNAUTHORIZED_MERCHANT',
-            ], 403);
+            ], 401);
         }
 
         $token = $user->createToken($request->device_name ?? 'merchant_terminal', ['role:merchant_staff', 'role:merchant'])->plainTextToken;
+        $userResource = new UserResource($user);
+        $userData = $userResource->resolve();
+
+        $storeData = $user->store ? [
+            'id' => $user->store->id,
+            'name' => $user->store->name,
+            'is_active' => (bool) ($user->store->is_active ?? true),
+            'balance' => (float) ($user->store->wallet->balance ?? $user->store->balance ?? 0.00),
+            'currency' => 'D.L',
+        ] : null;
 
         return response()->json([
             'success' => true,
             'message' => 'Merchant terminal login successful.',
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $userData,
+            'store' => $storeData,
             'data' => [
-                'user' => new UserResource($user),
-                'store' => $user->store ? [
-                    'id' => $user->store->id,
-                    'name' => $user->store->name,
-                    'balance' => (float) ($user->store->wallet->balance ?? $user->store->balance ?? 0.00),
-                    'currency' => 'D.L',
-                ] : null,
+                'user' => $userData,
+                'store' => $storeData,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ],

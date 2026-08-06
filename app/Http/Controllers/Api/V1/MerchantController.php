@@ -36,20 +36,36 @@ class MerchantController extends Controller
         $wallet = $store->getOrCreateWallet();
 
         $todayRedemptionsCount = Redemption::query()
-            ->where('store_id', $storeId)
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->whereDate('redeemed_at', today())
             ->count();
 
         $totalRedemptionsCount = Redemption::query()
-            ->where('store_id', $storeId)
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->count();
 
         $totalPendingFees = (float) Redemption::query()
-            ->where('store_id', $storeId)
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->sum('charged_fee');
 
         $todayPendingFees = (float) Redemption::query()
-            ->where('store_id', $storeId)
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->whereDate('redeemed_at', today())
             ->sum('charged_fee');
 
@@ -113,11 +129,15 @@ class MerchantController extends Controller
             ], 403);
         }
 
-        $storeId = $merchant->store_id ?? 1;
+        $storeId = $merchant->store_id ?? $merchant->store?->id ?? 1;
 
         $redemptions = Redemption::query()
             ->with(['coupon:id,title,code,discount_type,discount_value', 'user:id,name,email,phone'])
-            ->where('store_id', $storeId)
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->latest('redeemed_at')
             ->get();
 

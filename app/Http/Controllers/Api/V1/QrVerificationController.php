@@ -44,10 +44,42 @@ class QrVerificationController extends Controller
             ], 422);
         }
 
-        // Parse token if format is "CANDELA:{userId}:{couponCode}:{timestamp}"
+        // Parse base64 HMAC dynamic QR payload if present
         $parsedCode = $qrTokenInput;
         $extractedUserId = null;
-        if (str_contains($qrTokenInput, ':')) {
+        $extractedCouponId = null;
+
+        $decodedPayload = json_decode(@base64_decode($qrTokenInput), true) ?? json_decode($qrTokenInput, true);
+        if (is_array($decodedPayload) && isset($decodedPayload['signature'], $decodedPayload['timestamp'], $decodedPayload['coupon_id'])) {
+            $timestamp = (int) $decodedPayload['timestamp'];
+            $couponIdFromPayload = (int) $decodedPayload['coupon_id'];
+            $userIdFromPayload = (int) ($decodedPayload['user_id'] ?? 0);
+            $nonce = $decodedPayload['nonce'] ?? '';
+            $secretKey = config('app.key', 'CandelaSmartAntiFraudSecretKey2026');
+
+            $rawString = "coupon:{$couponIdFromPayload}|user:{$userIdFromPayload}|time:{$timestamp}|nonce:{$nonce}";
+            $expectedSignature = hash_hmac('sha256', $rawString, $secretKey);
+
+            if ($timestamp < (now()->timestamp - 60)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Dynamic QR pass has expired (valid for 30-60 seconds). Please ask customer to refresh QR pass.',
+                    'error_code' => 'EXPIRED_DYNAMIC_QR',
+                ], 422);
+            }
+
+            if (! hash_equals($expectedSignature, $decodedPayload['signature'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid dynamic QR pass signature (anti-fraud check failed).',
+                    'error_code' => 'INVALID_QR_SIGNATURE',
+                ], 422);
+            }
+
+            $extractedUserId = $userIdFromPayload;
+            $extractedCouponId = $couponIdFromPayload;
+            $parsedCode = (string) $couponIdFromPayload;
+        } elseif (str_contains($qrTokenInput, ':')) {
             $parts = explode(':', $qrTokenInput);
             if (count($parts) >= 3) {
                 $extractedUserId = is_numeric($parts[1]) ? (int) $parts[1] : null;
@@ -58,9 +90,9 @@ class QrVerificationController extends Controller
         // 1. Flexible Lookup for Coupon in database
         $coupon = Coupon::with(['offer', 'user'])
             ->where('qr_token', $qrTokenInput)
+            ->orWhere('id', $extractedCouponId ?? (is_numeric($parsedCode) ? (int) $parsedCode : 0))
             ->orWhere('code', $parsedCode)
             ->orWhere('code', $qrTokenInput)
-            ->orWhere('id', is_numeric($parsedCode) ? (int) $parsedCode : 0)
             ->first();
 
         // Determine valid customer User ID with fallback

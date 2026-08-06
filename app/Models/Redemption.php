@@ -60,4 +60,9 @@ class Redemption extends Model
     {
         return $this->belongsTo(User::class, 'staff_user_id');
     }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
 }

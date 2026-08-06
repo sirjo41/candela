@@ -41,9 +41,32 @@ class Coupon extends Model
         'is_active' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Coupon $coupon) {
+            if ($coupon->store_id && ($coupon->creation_fee === null || (float)$coupon->creation_fee === 0.0)) {
+                $store = $coupon->store ?? Store::find($coupon->store_id);
+                if ($store && $store->creation_fee_rate !== null) {
+                    $coupon->creation_fee = $store->creation_fee_rate;
+                }
+            }
+            if ($coupon->store_id && ($coupon->redemption_fee === null || (float)$coupon->redemption_fee === 0.0)) {
+                $store = $coupon->store ?? Store::find($coupon->store_id);
+                if ($store && $store->redemption_fee_rate !== null) {
+                    $coupon->redemption_fee = $store->redemption_fee_rate;
+                }
+            }
+        });
+    }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function campaign(): BelongsTo
+    {
+        return $this->belongsTo(Campaign::class);
     }
 
     public function merchant(): BelongsTo

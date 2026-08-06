@@ -25,42 +25,169 @@ class CustomerController extends Controller
     }
 
     /**
-     * Get list of merchant locations and branch addresses.
+     * Get list of merchant locations and branch addresses with optional Haversine distance sorting.
      */
     public function stores(Request $request): JsonResponse
     {
+        $lat = $request->query('lat') ?? $request->query('latitude');
+        $lng = $request->query('lng') ?? $request->query('longitude');
+
         $stores = Store::query()
             ->where('is_active', true)
             ->with([
-                'branches' => fn ($query) => $query->where('is_active', true),
+                'branches' => function ($query) use ($lat, $lng) {
+                    $query->where('is_active', true);
+                    if ($lat !== null && $lng !== null) {
+                        $query->withDistance((float) $lat, (float) $lng);
+                    }
+                },
                 'merchants',
             ])
             ->get();
 
-        return response()->json([
-            'data' => $stores->map(function ($store) {
-                $primaryBranch = $store->branches->first();
-                $logoUrl = $this->formatLogoUrl($store->logo);
+        $storeList = $stores->map(function ($store) use ($lat, $lng) {
+            $primaryBranch = $store->branches->first();
+            $logoUrl = $this->formatLogoUrl($store->logo);
 
-                return [
-                    'id' => $store->id,
-                    'branch_id' => $primaryBranch ? "BRANCH-00{$primaryBranch->id}" : "BRANCH-00{$store->id}",
-                    'name' => $store->name,
-                    'store_name' => $store->name,
-                    'logo' => $logoUrl,
-                    'store_logo_url' => $logoUrl,
-                    'address' => $primaryBranch ? $primaryBranch->address : 'Cairo, Egypt',
-                    'distance' => '1.2 km away',
-                    'open_hours' => '9:00 AM - 11:00 PM',
-                    'rating' => 4.9,
-                    'branches' => $store->branches,
-                    'merchants' => $store->merchants->map(fn ($m) => [
-                        'id' => $m->id,
-                        'name' => $m->name,
-                        'email' => $m->email,
-                    ]),
-                ];
-            }),
+            $distanceText = '1.2 km away';
+            if ($primaryBranch && isset($primaryBranch->distance_km)) {
+                $distanceText = number_format((float) $primaryBranch->distance_km, 1) . ' km away';
+            } elseif ($lat !== null && $lng !== null && $primaryBranch && $primaryBranch->latitude && $primaryBranch->longitude) {
+                $earthRadius = 6371;
+                $dLat = deg2rad((float) $primaryBranch->latitude - (float) $lat);
+                $dLon = deg2rad((float) $primaryBranch->longitude - (float) $lng);
+                $a = sin($dLat / 2) * sin($dLat / 2) +
+                    cos(deg2rad((float) $lat)) * cos(deg2rad((float) $primaryBranch->latitude)) *
+                    sin($dLon / 2) * sin($dLon / 2);
+                $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+                $km = $earthRadius * $c;
+                $distanceText = number_format($km, 1) . ' km away';
+            }
+
+            return [
+                'id' => $store->id,
+                'branch_id' => $primaryBranch ? "BRANCH-00{$primaryBranch->id}" : "BRANCH-00{$store->id}",
+                'name' => $store->name,
+                'store_name' => $store->name,
+                'logo' => $logoUrl,
+                'store_logo_url' => $logoUrl,
+                'address' => $primaryBranch ? $primaryBranch->address : 'Tripoli, Libya',
+                'distance' => $distanceText,
+                'distance_km' => $primaryBranch->distance_km ?? null,
+                'open_hours' => '9:00 AM - 11:00 PM',
+                'rating' => 4.9,
+                'branches' => $store->branches,
+                'merchants' => $store->merchants->map(fn ($m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'email' => $m->email,
+                ]),
+            ];
+        });
+
+        if ($lat !== null && $lng !== null) {
+            $storeList = $storeList->sortBy(function ($s) {
+                return (float) ($s['distance_km'] ?? 99999);
+            })->values();
+        }
+
+        return response()->json([
+            'data' => $storeList,
+        ]);
+    }
+
+    /**
+     * Generate dynamic anti-fraud HMAC QR payload valid for 30-60 seconds.
+     */
+    public function showQrPass(Request $request, int $couponId): JsonResponse
+    {
+        $user = $request->user('sanctum') ?? $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $now = now()->timestamp;
+        $secretKey = config('app.key', 'CandelaSmartAntiFraudSecretKey2026');
+        $nonce = bin2hex(random_bytes(4));
+        
+        $rawString = "coupon:{$couponId}|user:{$user->id}|time:{$now}|nonce:{$nonce}";
+        $hmacHash = hash_hmac('sha256', $rawString, $secretKey);
+        
+        $qrPayload = json_encode([
+            'coupon_id' => $couponId,
+            'user_id' => $user->id,
+            'timestamp' => $now,
+            'nonce' => $nonce,
+            'signature' => $hmacHash,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'coupon_id' => $couponId,
+            'qr_token' => base64_encode($qrPayload),
+            'qr_payload' => $qrPayload,
+            'expires_in_seconds' => 30,
+            'expires_at' => $now + 30,
+        ]);
+    }
+
+    /**
+     * Get Customer Points & Loyalty Rewards Center Data.
+     */
+    public function rewards(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum') ?? $request->user();
+        $points = $user ? ($user->loyalty_points ?? 250) : 250;
+        $tier = $points >= 500 ? 'المستوى الذهبي' : 'المستوى الفضي';
+        $pointsNeeded = $points >= 500 ? 0 : (500 - $points);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'loyalty_points' => $points,
+                'tier' => $tier,
+                'tier_subtitle' => $points >= 500 ? 'لقد وصلت للمستوى الأعلى!' : "تبقى {$pointsNeeded} نقطة للوصول للمستوى الذهبي!",
+                'points_progress' => "{$points} / 500",
+                'progress_ratio' => min(1.0, $points / 500.0),
+                'earn_methods' => [
+                    ['title' => 'تسوق من المتاجر', 'subtitle' => 'كسب نقطة لكل دينار', 'icon' => 'shopping_bag'],
+                    ['title' => 'استخدم الكوبونات', 'subtitle' => 'نقاط إضافية عند الاستخدام', 'icon' => 'confirmation_number'],
+                    ['title' => 'أحضر أصدقاء', 'subtitle' => '50 نقطة لكل دعوة', 'icon' => 'person_add'],
+                ],
+                'cash_redemption_options' => [
+                    ['points' => 1000, 'cash_amount' => 10, 'currency' => 'دينار كاش', 'can_redeem' => $points >= 1000],
+                    ['points' => 5000, 'cash_amount' => 60, 'currency' => 'دينار كاش', 'can_redeem' => $points >= 5000],
+                    ['points' => 10000, 'cash_amount' => 150, 'currency' => 'دينار كاش', 'can_redeem' => $points >= 10000],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Redeem customer loyalty points for cash balance credit.
+     */
+    public function redeemPoints(Request $request): JsonResponse
+    {
+        $user = $request->user('sanctum') ?? $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $pointsToRedeem = (int) $request->input('points', 1000);
+        if ($user->loyalty_points < $pointsToRedeem) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رصيد النقاط غير كافي للاستبدال.',
+                'error_code' => 'INSUFFICIENT_POINTS',
+            ], 422);
+        }
+
+        $user->decrement('loyalty_points', $pointsToRedeem);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم استبدال النقاط بنجاح!',
+            'remaining_points' => $user->fresh()->loyalty_points,
         ]);
     }
 
@@ -233,6 +360,13 @@ class CustomerController extends Controller
             $query->where('campaign_id', $campaignId);
         }
 
+        if ($location = $request->query('location')) {
+            $query->whereHas('store.branches', function ($bq) use ($location) {
+                $bq->where('address', 'like', "%{$location}%")
+                   ->orWhere('name', 'like', "%{$location}%");
+            });
+        }
+
         $coupons = $query->get();
 
         return response()->json([
@@ -361,12 +495,17 @@ class CustomerController extends Controller
                 'store' => $storeName,
                 'store_name' => $storeName,
                 'store_logo_url' => $logoUrl,
-                'status' => 'active',
+                'status' => 'claimed',
                 'expires' => $expiresFormatted,
                 'expires_at' => $expiresFormatted,
                 'claimed_at' => now()->format('Y-m-d H:i'),
+                'coupon' => [
+                    'id' => $coupon->id,
+                    'title' => $coupon->title,
+                    'code' => $coupon->code,
+                ],
             ],
-        ], 200);
+        ], 201);
     }
 
     /**

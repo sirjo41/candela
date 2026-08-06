@@ -91,4 +91,26 @@ class Store extends Model
             'status' => 'active',
         ]);
     }
+
+    public function getTotalCreationFeesAttribute(): float
+    {
+        return (float) $this->coupons()->sum('creation_fee');
+    }
+
+    public function getTotalRedemptionFeesAttribute(): float
+    {
+        $storeId = $this->id;
+        return (float) Redemption::query()
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId))
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId));
+            })
+            ->sum('charged_fee');
+    }
+
+    public function getGrandTotalFeesAttribute(): float
+    {
+        return $this->total_creation_fees + $this->total_redemption_fees;
+    }
 }

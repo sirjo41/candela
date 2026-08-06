@@ -29,11 +29,19 @@ class OwnerStatsOverview extends BaseWidget
             ->count();
 
         $totalRedemptions = Redemption::query()
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->count();
 
         $totalFees = Redemption::query()
-            ->whereHas('branch', fn ($q) => $q->where('store_id', $storeId))
+            ->where(function ($q) use ($storeId) {
+                $q->where('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
+                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
+            })
             ->sum('charged_fee');
 
         $topCoupon = Coupon::query()

@@ -31,4 +31,16 @@ class Branch extends Model
     {
         return $this->hasMany(Redemption::class);
     }
+
+    /**
+     * Haversine formula query scope to calculate distance in kilometers.
+     */
+    public function scopeWithDistance($query, float $latitude, float $longitude)
+    {
+        $rawSql = "(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))";
+        
+        return $query->select('*')
+            ->selectRaw("{$rawSql} AS distance_km", [$latitude, $longitude, $latitude])
+            ->orderBy('distance_km', 'asc');
+    }
 }
