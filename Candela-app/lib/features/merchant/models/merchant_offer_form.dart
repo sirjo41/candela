@@ -3,8 +3,8 @@ class MerchantOfferForm {
   String title;
   String description;
   String category;
-  double originalPrice;
-  double discountedPrice;
+  double? originalPrice;
+  double? discountedPrice;
   List<String> selectedBranches;
   DateTime startDate;
   DateTime endDate;
@@ -15,47 +15,57 @@ class MerchantOfferForm {
     this.title = '',
     this.description = '',
     this.category = 'المطاعم',
-    this.originalPrice = 200.0,
-    this.discountedPrice = 140.0,
+    this.originalPrice,
+    this.discountedPrice,
     List<String>? selectedBranches,
     DateTime? startDate,
     DateTime? endDate,
     this.creationFee = 50.0,
     this.redemptionFee = 5.0,
-  })  : selectedBranches = selectedBranches ?? ['فرع وسط البلد (الرئيسي)'],
+  })  : selectedBranches = selectedBranches ?? ['الفرع الرئيسي'],
         startDate = startDate ?? DateTime.now(),
         endDate = endDate ?? DateTime.now().add(const Duration(days: 14));
 
   /// Calculate discount percentage rate
   int get discountPercentage {
-    if (originalPrice <= 0 || discountedPrice >= originalPrice) {
+    if (originalPrice == null || discountedPrice == null || originalPrice! <= 0 || discountedPrice! >= originalPrice!) {
       return 0;
     }
-    final discount = ((originalPrice - discountedPrice) / originalPrice) * 100;
+    final discount = ((originalPrice! - discountedPrice!) / originalPrice!) * 100;
     return discount.round();
   }
 
-  /// Format badge string (e.g. "-30%")
+  /// Format badge string (e.g. "-30%" or "عرض خاص")
   String get discountBadgeText {
     final pct = discountPercentage;
     return pct > 0 ? '-$pct%' : 'عرض خاص';
   }
 
   /// Calculate savings amount in D.L
-  double get savingsAmount => (originalPrice - discountedPrice).clamp(0, double.infinity);
+  double get savingsAmount {
+    if (originalPrice == null || discountedPrice == null) return 0.0;
+    return (originalPrice! - discountedPrice!).clamp(0, double.infinity);
+  }
 
   Map<String, dynamic> toApiPayload() {
-    return {
-      'title': title.trim().isEmpty ? 'عرض خصم مميز' : title.trim(),
+    final Map<String, dynamic> payload = {
+      'title': title.trim().isEmpty ? 'عرض مميز' : title.trim(),
       'description': description.trim(),
       'category': category,
-      'original_price': originalPrice,
-      'discount_rate': discountPercentage > 0 ? discountPercentage.toDouble() : 10.0,
       'creation_fee': creationFee,
       'redemption_fee': redemptionFee,
       'discount_badge': discountBadgeText,
       'branch_location': selectedBranches.join('، '),
       'valid_until': endDate.toIso8601String(),
     };
+
+    if (originalPrice != null && originalPrice! > 0) {
+      payload['original_price'] = originalPrice;
+    }
+    if (discountPercentage > 0) {
+      payload['discount_rate'] = discountPercentage.toDouble();
+    }
+
+    return payload;
   }
 }

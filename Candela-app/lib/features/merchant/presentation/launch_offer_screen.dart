@@ -19,10 +19,10 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
   final _formKey = GlobalKey<FormState>();
   final MerchantOfferForm _form = MerchantOfferForm();
 
-  final TextEditingController _titleController = TextEditingController(text: 'عرض الصيف المميز 30% خصم');
-  final TextEditingController _descriptionController = TextEditingController(text: 'احصل على خصم 30% على جميع الوجبات الرئيسية والمشروبات.');
-  final TextEditingController _originalPriceController = TextEditingController(text: '200.0');
-  final TextEditingController _discountedPriceController = TextEditingController(text: '140.0');
+  final TextEditingController _titleController = TextEditingController(text: 'اشتري 2 واحصل على 1 مجاناً');
+  final TextEditingController _descriptionController = TextEditingController(text: 'احصل على قطعة مجانية عند شراء قطعتين من أي قسم.');
+  final TextEditingController _originalPriceController = TextEditingController();
+  final TextEditingController _discountedPriceController = TextEditingController();
 
   final List<String> _availableCategories = [
     'المطاعم',
@@ -32,10 +32,15 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
   ];
 
   final List<String> _allBranches = [
-    'فرع وسط البلد (الرئيسي)',
-    'فرع الزمالك - شارع 26 يوليو',
-    'فرع المعادي - شارع 233',
-    'فرع التجمع الخامس - سيتي سنتر',
+    'الفرع الرئيسي - وسط المدينة',
+    'فرع شارع عمر المختار',
+  ];
+
+  final List<String> _quickPresetDeals = [
+    'اشتري 2 واحصل على 1 مجاناً',
+    'خصم 20% للطلبات فوق 50 د.ل',
+    'كب كيك مجاني مع كل قهوة',
+    'مشروب مجاني مع أي وجبة',
   ];
 
   @override
@@ -45,6 +50,7 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
     _descriptionController.addListener(_updateFormState);
     _originalPriceController.addListener(_updateFormState);
     _discountedPriceController.addListener(_updateFormState);
+    _updateFormState();
   }
 
   @override
@@ -60,8 +66,8 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
     setState(() {
       _form.title = _titleController.text;
       _form.description = _descriptionController.text;
-      _form.originalPrice = double.tryParse(_originalPriceController.text) ?? 200.0;
-      _form.discountedPrice = double.tryParse(_discountedPriceController.text) ?? 140.0;
+      _form.originalPrice = double.tryParse(_originalPriceController.text);
+      _form.discountedPrice = double.tryParse(_discountedPriceController.text);
     });
   }
 
@@ -174,10 +180,34 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
-                        labelText: 'عنوان العرض (مثال: خصم 30% على الوجبات)',
+                        labelText: 'عنوان العرض (مثال: اشتري 2 واحصل على 1 مجاناً)',
                         prefixIcon: Icon(Icons.title_rounded, color: AppColors.darkSlate),
                       ),
                       validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال عنوان العرض' : null,
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Quick Preset Deal Buttons
+                    SizedBox(
+                      height: 34,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _quickPresetDeals.length,
+                        itemBuilder: (ctx, idx) {
+                          final preset = _quickPresetDeals[idx];
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: ActionChip(
+                              backgroundColor: AppColors.darkSlate.withValues(alpha: 0.06),
+                              side: const BorderSide(color: AppColors.borderGrey),
+                              label: Text(preset, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkSlate)),
+                              onPressed: () {
+                                _titleController.text = preset;
+                              },
+                            ),
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: 16),
 

@@ -77,20 +77,20 @@ class MerchantOfferItem {
 
   factory MerchantOfferItem.fromJson(Map<String, dynamic> json) {
     return MerchantOfferItem(
-      id: json['id']?.toString() ?? 'OFR-${DateTime.now().millisecondsSinceEpoch}',
+      id: json['id']?.toString() ?? '',
       title: json['title'] ?? json['name'] ?? 'عرض ترويجي',
       description: json['description'] ?? '',
       category: json['category'] ?? 'المطاعم',
-      originalPrice: (json['original_price'] as num?)?.toDouble() ?? 200.0,
-      discountedPrice: (json['discounted_price'] as num?)?.toDouble() ?? 140.0,
-      discountBadge: json['discount_badge'] ?? '-30%',
+      originalPrice: (json['original_price'] as num?)?.toDouble() ?? 0.0,
+      discountedPrice: (json['discounted_price'] as num?)?.toDouble() ?? 0.0,
+      discountBadge: json['discount_badge'] ?? 'عرض خاص',
       status: json['status']?.toString().toLowerCase() ?? 'active',
-      viewsCount: json['views_count'] ?? json['views'] ?? 245,
-      claimedCount: json['claimed_count'] ?? json['claims'] ?? 84,
-      redemptionsCount: json['redemptions_count'] ?? json['redemptions'] ?? 42,
-      totalSalesGenerated: (json['total_sales'] as num?)?.toDouble() ?? 5880.0,
-      validUntil: json['valid_until'] != null ? DateTime.parse(json['valid_until'].toString()) : DateTime.now().add(const Duration(days: 30)),
-      branches: json['branches'] is List ? List<String>.from(json['branches']) : ['فرع وسط البلد (الرئيسي)'],
+      viewsCount: json['views_count'] ?? json['views'] ?? 0,
+      claimedCount: json['claimed_count'] ?? json['claims'] ?? 0,
+      redemptionsCount: json['redemptions_count'] ?? json['redemptions'] ?? json['uses_count'] ?? 0,
+      totalSalesGenerated: (json['total_sales'] as num?)?.toDouble() ?? 0.0,
+      validUntil: json['valid_until'] != null ? DateTime.tryParse(json['valid_until'].toString()) ?? DateTime.now().add(const Duration(days: 30)) : DateTime.now().add(const Duration(days: 30)),
+      branches: json['branches'] is List ? List<String>.from(json['branches']) : ['الفرع الرئيسي'],
     );
   }
 }

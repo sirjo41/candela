@@ -66,18 +66,18 @@ class CustomBottomNavBar extends StatelessWidget {
                     ],
                   ),
                   child: const Icon(
-                    Icons.location_on_rounded,
+                    Icons.qr_code_scanner_rounded,
                     color: AppColors.darkBackground,
                     size: 28,
                   ),
                 ),
               ),
 
-              // 4. Events Tab (الفعاليات)
+              // 4. Wallet Tab (المحفظة)
               _buildNavItem(
                 index: 3,
-                icon: Icons.celebration_rounded,
-                label: 'الفعاليات',
+                icon: Icons.account_balance_wallet_rounded,
+                label: 'المحفظة',
               ),
 
               // 5. Menu Tab (القائمة)

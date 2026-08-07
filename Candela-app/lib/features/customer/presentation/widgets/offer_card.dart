@@ -186,50 +186,74 @@ class OfferCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Price Display (Original strikethrough vs Discounted in D.L)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      CurrencyFormatter.format(offer.originalPrice),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                        decoration: TextDecoration.lineThrough,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          CurrencyFormatter.format(offer.discountedPrice),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            color: AppColors.darkSlate,
-                            fontWeight: FontWeight.w900,
-                          ),
+                // Price Display (Original strikethrough vs Discounted in D.L or Text Deal)
+                if (offer.hasPrice) ...[
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        CurrencyFormatter.format(offer.originalPrice!),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                          decoration: TextDecoration.lineThrough,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.successGreenLight,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Save ${CurrencyFormatter.format(offer.savingsAmount)}',
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            CurrencyFormatter.format(offer.discountedPrice!),
                             style: const TextStyle(
-                              color: AppColors.successGreen,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: AppColors.darkSlate,
+                              fontWeight: FontWeight.w900,
                             ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.successGreenLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Save ${CurrencyFormatter.format(offer.savingsAmount)}',
+                              style: const TextStyle(
+                                color: AppColors.successGreen,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryAmber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_offer_rounded, color: AppColors.copperOrange, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          offer.discountBadge,
+                          style: const TextStyle(
+                            color: AppColors.darkSlate,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
 
                 // Claim Action Button
                 ElevatedButton(

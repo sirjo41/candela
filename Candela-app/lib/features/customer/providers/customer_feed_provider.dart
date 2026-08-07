@@ -10,7 +10,13 @@ class CustomerFeedProvider extends ChangeNotifier {
 
   String _selectedCategory = 'All';
   List<OfferModel> _offers = [];
+  List<dynamic> _stores = [];
+  List<dynamic> _activeCoupons = [];
+  List<dynamic> _usedCoupons = [];
+  List<dynamic> _expiredCoupons = [];
   bool _isLoading = false;
+  bool _isLoadingStores = false;
+  bool _isLoadingWallet = false;
   String? _errorMessage;
   Timer? _countdownTimer;
 
@@ -28,7 +34,13 @@ class CustomerFeedProvider extends ChangeNotifier {
 
   String get selectedCategory => _selectedCategory;
   List<OfferModel> get offers => _offers;
+  List<dynamic> get stores => _stores;
+  List<dynamic> get activeCoupons => _activeCoupons;
+  List<dynamic> get usedCoupons => _usedCoupons;
+  List<dynamic> get expiredCoupons => _expiredCoupons;
   bool get isLoading => _isLoading;
+  bool get isLoadingStores => _isLoadingStores;
+  bool get isLoadingWallet => _isLoadingWallet;
   String? get errorMessage => _errorMessage;
 
   List<OfferModel> get filteredOffers {
@@ -43,6 +55,8 @@ class CustomerFeedProvider extends ChangeNotifier {
 
   CustomerFeedProvider() {
     fetchFeedData();
+    fetchStores();
+    fetchWallet();
     _startTicker();
   }
 
@@ -98,6 +112,51 @@ class CustomerFeedProvider extends ChangeNotifier {
     _offers = [];
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> fetchStores() async {
+    _isLoadingStores = true;
+    notifyListeners();
+
+    try {
+      final res = await _apiClient.dio.get('/customer/stores');
+      if (res.statusCode == 200 && res.data != null) {
+        final List rawStores = res.data is List ? res.data : (res.data['data'] ?? []);
+        _stores = rawStores;
+      }
+    } catch (_) {}
+
+    _isLoadingStores = false;
+    notifyListeners();
+  }
+
+  Future<void> fetchWallet() async {
+    _isLoadingWallet = true;
+    notifyListeners();
+
+    try {
+      final res = await _apiClient.dio.get('/customer/wallet');
+      if (res.statusCode == 200 && res.data != null && res.data['wallet'] != null) {
+        final walletData = res.data['wallet'];
+        _activeCoupons = walletData['active'] ?? [];
+        _usedCoupons = walletData['used'] ?? [];
+        _expiredCoupons = walletData['expired'] ?? [];
+      }
+    } catch (_) {}
+
+    _isLoadingWallet = false;
+    notifyListeners();
+  }
+
+  Future<bool> claimCoupon(int id) async {
+    try {
+      final res = await _apiClient.dio.post('/customer/coupons/$id/claim');
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        await fetchWallet();
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   void markOfferClaimed(String offerId) {

@@ -22,37 +22,8 @@ class CustomerMainNavigation extends StatefulWidget {
 
 class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   int _currentIndex = 0;
+  int _walletSubTab = 0;
   final ApiClient _apiClient = ApiClient();
-
-  List<dynamic> _stores = [];
-  bool _loadingStores = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchStoresData();
-  }
-
-  Future<void> _fetchStoresData() async {
-    try {
-      final res = await _apiClient.dio.get('/customer/stores');
-      if (res.statusCode == 200 && res.data != null) {
-        final data = res.data is List ? res.data : (res.data['data'] ?? []);
-        setState(() {
-          _stores = data;
-          _loadingStores = false;
-        });
-        return;
-      }
-    } catch (_) {}
-
-    if (mounted) {
-      setState(() {
-        _stores = [];
-        _loadingStores = false;
-      });
-    }
-  }
 
   void _claimOffer(BuildContext context, offer) {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
@@ -221,7 +192,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   _buildHomeTab(),
                   _buildOffersTab(),
                   const SizedBox.shrink(),
-                  _buildEventsTab(),
+                  _buildWalletTab(),
                   _buildProfileTab(user, auth),
                 ],
               ),
@@ -352,48 +323,94 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Featured Stores Section (المتاجر المتميزة)
-                    _buildSectionHeader('المتاجر المتميزة'),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: AppColors.darkSlate,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.darkSlate,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            ),
-                            onPressed: () {},
-                            child: const Text('عرض', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
+                    // Featured Stores Section (المتاجر المتميزة وفروعها)
+                    _buildSectionHeader('المتاجر المتميزة وفروعها'),
+                    SizedBox(
+                      height: 140,
+                      child: feedProvider.isLoadingStores
+                          ? const Center(child: CircularProgressIndicator(color: AppColors.copperOrange))
+                          : feedProvider.stores.isEmpty
+                              ? const Center(child: Text('لا توجد متاجر مضافة حالياً', style: TextStyle(color: AppColors.textMuted)))
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: feedProvider.stores.length,
+                                  itemBuilder: (ctx, idx) {
+                                    final store = feedProvider.stores[idx];
+                                    final name = store['store_name'] ?? store['name'] ?? 'متجر كانديلا';
+                                    final address = store['address'] ?? 'طرابلس، ليبيا';
+                                    final distance = store['distance'] ?? 'قريب منك';
+
+                                    return GestureDetector(
+                                      onTap: () => _showStoreCouponsModal(context, store),
+                                      child: Container(
+                                        width: 170,
+                                        margin: const EdgeInsets.only(left: 12),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.darkSlate,
+                                          borderRadius: BorderRadius.circular(18),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.copperOrange,
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Text(
+                                                    distance,
+                                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                                const Icon(Icons.storefront_rounded, color: Colors.white70, size: 22),
+                                              ],
+                                            ),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  name,
+                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.location_on_rounded, color: AppColors.copperOrange, size: 12),
+                                                    const SizedBox(width: 2),
+                                                    Expanded(
+                                                      child: Text(
+                                                        address,
+                                                        style: const TextStyle(color: Colors.white70, fontSize: 10.5),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                child: const Text('إعلان مميز', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'اكتشف العلامات التجارية الرائدة الآن',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -718,161 +735,421 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // TAB 3: EVENTS VIEW (Matching Screenshot 4)
-  // ---------------------------------------------------------------------------
-  Widget _buildEventsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(23),
-                    border: Border.all(color: AppColors.borderGrey),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.tune_rounded, color: AppColors.textMuted, size: 20),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'ابحث عن العروض، المتاجر...',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                        ),
-                      ),
-                      Icon(Icons.search_rounded, color: AppColors.copperOrange, size: 22),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+  void _showStoreCouponsModal(BuildContext context, dynamic store) {
+    final storeName = store['store_name'] ?? store['name'] ?? 'المتجر';
+    final address = store['address'] ?? 'طرابلس، ليبيا';
 
-              // Section Header: أبرز المواعيد والفعاليات
-              _buildSectionHeader('أبرز المواعيد والفعاليات'),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Consumer<CustomerFeedProvider>(
+            builder: (context, feedProvider, _) {
+              final storeOffers = feedProvider.offers
+                  .where((o) => o.storeName.toLowerCase() == storeName.toString().toLowerCase())
+                  .toList();
 
-              // Featured Event Card (Matching Screenshot 4)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.75,
+                decoration: const BoxDecoration(
+                  color: AppColors.darkSlate,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
+                padding: const EdgeInsets.all(20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Top Terracotta Banner
-                    Container(
-                      height: 140,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xFFE86014),
-                            Color(0xFFC84605),
-                          ],
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primaryAmber,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.storefront_rounded, color: AppColors.darkSlate, size: 24),
                         ),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-                      ),
-                      child: Stack(
-                        children: [
-                          const Center(
-                            child: Icon(Icons.calendar_today_rounded, color: Colors.white, size: 48),
-                          ),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF97316),
-                                borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                storeName,
+                                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
-                              child: const Text('جديد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Bottom Details Box
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'معرض الفنون التشكيلية',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text('15 سبتمبر، 2024', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                              const SizedBox(width: 6),
-                              Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.copperOrange),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_rounded, color: AppColors.primaryAmber, size: 13),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      address,
+                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text('دار الفنون، طرابلس', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                              const SizedBox(width: 6),
-                              Icon(Icons.location_on_rounded, size: 14, color: AppColors.copperOrange),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Section: ✦ اكتشف المزيد
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
+                    const SizedBox(height: 20),
                     const Text(
-                      'اكتشف المزيد',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                      'كوبونات وعروض المتجر المتاحة',
+                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 6),
-                    Icon(Icons.auto_awesome_rounded, color: AppColors.copperOrange, size: 18),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: storeOffers.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'لا توجد كوبونات مخصصة لهذا المتجر حالياً.',
+                                style: TextStyle(color: Colors.white60, fontSize: 13),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: storeOffers.length,
+                              itemBuilder: (context, index) {
+                                final offer = storeOffers[index];
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white12),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              offer.title,
+                                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              offer.discountBadge,
+                                              style: const TextStyle(color: AppColors.primaryAmber, fontSize: 12, fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.primaryAmber,
+                                          foregroundColor: AppColors.darkSlate,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                        onPressed: () async {
+                                          final success = await feedProvider.claimCoupon(int.tryParse(offer.id) ?? 1);
+                                          if (ctx.mounted) {
+                                            Navigator.pop(ctx);
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: success ? AppColors.successGreen : AppColors.primaryAmber,
+                                                content: Text(success ? 'تم حجز الكوبون وإضافته لمحفظتك بنجاح!' : 'الكوبون محجوز بالفعل في محفظتك.'),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        child: const Text('احجز الكوبون', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // TAB 3: WALLET VIEW (المحفظة - Active, Used, Expired Coupons)
+  // ---------------------------------------------------------------------------
+  Widget _buildWalletTab() {
+    return Consumer<CustomerFeedProvider>(
+      builder: (context, feedProvider, _) {
+        List<dynamic> currentList = [];
+        if (_walletSubTab == 0) {
+          currentList = feedProvider.activeCoupons;
+        } else if (_walletSubTab == 1) {
+          currentList = feedProvider.usedCoupons;
+        } else {
+          currentList = feedProvider.expiredCoupons;
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 28, top: 8),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.copperOrange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${currentList.length} كوبون',
+                            style: const TextStyle(color: AppColors.copperOrange, fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                        ),
+                        const Text(
+                          'محفظة الكوبونات',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Sub-Tab Switcher Pills
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.borderGrey),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _walletSubTab = 0),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _walletSubTab == 0 ? AppColors.copperOrange : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'النشطة (${feedProvider.activeCoupons.length})',
+                                  style: TextStyle(
+                                    color: _walletSubTab == 0 ? Colors.white : AppColors.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _walletSubTab = 1),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _walletSubTab == 1 ? AppColors.copperOrange : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'المستعملة (${feedProvider.usedCoupons.length})',
+                                  style: TextStyle(
+                                    color: _walletSubTab == 1 ? Colors.white : AppColors.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _walletSubTab = 2),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _walletSubTab == 2 ? AppColors.copperOrange : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'المنتهية (${feedProvider.expiredCoupons.length})',
+                                  style: TextStyle(
+                                    color: _walletSubTab == 2 ? Colors.white : AppColors.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Coupons List Body
+                  feedProvider.isLoadingWallet
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40),
+                            child: CircularProgressIndicator(color: AppColors.copperOrange),
+                          ),
+                        )
+                      : currentList.isEmpty
+                          ? Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(40),
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.confirmation_number_outlined, size: 56, color: AppColors.textMuted.withValues(alpha: 0.4)),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _walletSubTab == 0
+                                          ? 'لا توجد كوبونات نشطة في محفظتك حالياً'
+                                          : (_walletSubTab == 1 ? 'لم تقم باستخدام أي كوبونات بعد' : 'لا توجد كوبونات منتهية الصلاحية'),
+                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: currentList.length,
+                                itemBuilder: (context, idx) {
+                                  final item = currentList[idx];
+                                  final title = item['title'] ?? 'كوبون خصم مميز';
+                                  final store = item['store'] ?? item['store_name'] ?? 'متجر كانديلا';
+                                  final code = item['code'] ?? 'CPN-2026';
+                                  final expires = item['expires'] ?? '2026-12-31';
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 14),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: _walletSubTab == 0 ? AppColors.copperOrange.withValues(alpha: 0.5) : AppColors.borderGrey,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.04),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: _walletSubTab == 0 ? AppColors.successGreenLight : Colors.grey.shade200,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                _walletSubTab == 0 ? 'نشط' : (_walletSubTab == 1 ? 'تم الاستخدام' : 'منتهي'),
+                                                style: TextStyle(
+                                                  color: _walletSubTab == 0 ? AppColors.successGreen : Colors.grey.shade700,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              store,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          title,
+                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkSlate),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              'ينتهي في: $expires',
+                                              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                            ),
+                                            Text(
+                                              'الكود: $code',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.copperOrange),
+                                            ),
+                                          ],
+                                        ),
+                                        if (_walletSubTab == 0) ...[
+                                          const SizedBox(height: 12),
+                                          ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              minimumSize: const Size.fromHeight(40),
+                                              backgroundColor: AppColors.copperOrange,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                            icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                                            label: const Text('عرض رمز QR للاستخدام بالمتجر', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                                            onPressed: _openQrModalSheet,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1016,32 +1293,6 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               ),
               const SizedBox(height: 24),
 
-              // Section: استبدل نقاطك بـ رصيد كاش
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'استبدل نقاطك بـ رصيد كاش',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildRedeemRow('استبدال 1000 نقطة', 'بقيمة 10 دينار كاش', points >= 1000),
-                    const SizedBox(height: 10),
-                    _buildRedeemRow('استبدال 5000 نقطة', 'بقيمة 60 دينار كاش', points >= 5000),
-                    const SizedBox(height: 10),
-                    _buildRedeemRow('استبدال 10000 نقطة', 'بقيمة 150 دينار كاش', points >= 10000),
-                  ],
-                ),
-              ),
               const SizedBox(height: 24),
 
               // Switch to Merchant Portal & Logout
@@ -1121,61 +1372,6 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRedeemRow(String pointsTitle, String cashTitle, bool canRedeem) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: canRedeem ? AppColors.copperOrange : const Color(0xFFE8E4DF),
-              foregroundColor: canRedeem ? Colors.white : AppColors.textMuted,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            ),
-            onPressed: canRedeem ? () {} : null,
-            child: const Text('استبدال', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                pointsTitle,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                cashTitle,
-                style: const TextStyle(
-                  color: Color(0xFF00897B),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ],
           ),
         ],
       ),

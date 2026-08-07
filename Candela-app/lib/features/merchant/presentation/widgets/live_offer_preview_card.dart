@@ -152,49 +152,75 @@ class LiveOfferPreviewCard extends StatelessWidget {
                 const Divider(height: 1, color: AppColors.borderGrey),
                 const SizedBox(height: 12),
 
-                // Price Row: Original Price Strikethrough vs Discounted in D.L
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          CurrencyFormatter.format(form.originalPrice, isArabic: true),
+                // Price Row: Original Price Strikethrough vs Discounted in D.L or Custom Text Deal
+                if (form.originalPrice != null && form.originalPrice! > 0 && form.discountedPrice != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            CurrencyFormatter.format(form.originalPrice!, isArabic: true),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                          Text(
+                            CurrencyFormatter.format(form.discountedPrice!, isArabic: true),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.darkSlate,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.successGreenLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'وفر ${CurrencyFormatter.format(form.savingsAmount, isArabic: true)}',
                           style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                            decoration: TextDecoration.lineThrough,
+                            color: AppColors.successGreen,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryAmber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.stars_rounded, color: AppColors.copperOrange, size: 18),
+                        const SizedBox(width: 6),
                         Text(
-                          CurrencyFormatter.format(form.discountedPrice, isArabic: true),
+                          title,
                           style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
                             color: AppColors.darkSlate,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
                         ),
                       ],
                     ),
-
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.successGreenLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'وفر ${CurrencyFormatter.format(form.savingsAmount, isArabic: true)}',
-                        style: const TextStyle(
-                          color: AppColors.successGreen,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -95,9 +95,16 @@ class OfferController extends Controller
                 }
 
                 // Dynamic discount & final price calculation in D.L
-                $originalPrice = (float) $request->original_price;
-                $discountRate = (float) $request->discount_rate;
-                $finalPrice = Offer::calculateFinalPrice($originalPrice, $discountRate);
+                $originalPrice = $request->filled('original_price') ? (float) $request->original_price : null;
+                $discountRate = $request->filled('discount_rate') ? (float) $request->discount_rate : null;
+                $finalPrice = ($originalPrice !== null && $discountRate !== null)
+                    ? Offer::calculateFinalPrice($originalPrice, $discountRate)
+                    : null;
+
+                $badge = $request->discount_badge;
+                if (empty($badge)) {
+                    $badge = $discountRate !== null ? ('-' . (int) $discountRate . '%') : 'عرض خاص';
+                }
 
                 // Create Offer record in MySQL
                 $createdOffer = Offer::create([
@@ -110,7 +117,7 @@ class OfferController extends Controller
                     'final_price' => $finalPrice,
                     'creation_fee' => $creationFee,
                     'redemption_fee' => $redemptionFee,
-                    'discount_badge' => $request->discount_badge ?? ('-' . (int) $discountRate . '%'),
+                    'discount_badge' => $badge,
                     'banner_image' => $request->banner_image,
                     'branch_location' => $request->branch_location ?? $store->address ?? 'Downtown Branch',
                     'latitude' => $request->latitude ?? $store->latitude,

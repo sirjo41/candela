@@ -467,30 +467,21 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                 ),
                 const SizedBox(height: 12),
 
-                // Analytics Grid Surface (Scrollable for Phone Screens)
+                // Real Usage & Redemptions Surface
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppColors.darkSlate,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _buildMetricTile('المشاهدات', '${offer.viewsCount}', Icons.remove_red_eye_rounded, Colors.white),
-                        const SizedBox(width: 18),
-                        _buildMetricTile('المحجوزة', '${offer.claimedCount}', Icons.confirmation_num_rounded, AppColors.primaryAmber),
-                        const SizedBox(width: 18),
-                        _buildMetricTile('الاستخدامات', '${offer.redemptionsCount}', Icons.qr_code_scanner_rounded, AppColors.successGreen),
-                        const SizedBox(width: 18),
-                        _buildMetricTile('المبيعات', CurrencyFormatter.format(offer.totalSalesGenerated, isArabic: true), Icons.attach_money_rounded, AppColors.primaryAmber),
-                        const SizedBox(width: 18),
-                        _buildMetricTile('التحويل', '${offer.conversionRate.toStringAsFixed(1)}%', Icons.trending_up_rounded, AppColors.successGreen),
-                      ],
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildMetricTile('الكوبونات المحجوزة', '${offer.claimedCount}', Icons.confirmation_num_rounded, AppColors.primaryAmber),
+                      Container(height: 24, width: 1, color: Colors.white24),
+                      _buildMetricTile('الاستخدامات الفعلية', '${offer.redemptionsCount}', Icons.qr_code_scanner_rounded, AppColors.successGreen),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 10),
