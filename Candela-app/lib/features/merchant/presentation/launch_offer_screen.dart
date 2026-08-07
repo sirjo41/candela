@@ -1,0 +1,415 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../models/merchant_offer_form.dart';
+import '../providers/merchant_provider.dart';
+import 'widgets/live_offer_preview_card.dart';
+
+/// Launch New Offer Form Screen matching reference screenshot IMG-20260725-WA0014.jpg
+/// Includes live preview card, category selector, branch checkboxes, price inputs & creation fee badge in RTL mode.
+class LaunchOfferScreen extends StatefulWidget {
+  const LaunchOfferScreen({super.key});
+
+  @override
+  State<LaunchOfferScreen> createState() => _LaunchOfferScreenState();
+}
+
+class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final MerchantOfferForm _form = MerchantOfferForm();
+
+  final TextEditingController _titleController = TextEditingController(text: 'عرض الصيف المميز 30% خصم');
+  final TextEditingController _descriptionController = TextEditingController(text: 'احصل على خصم 30% على جميع الوجبات الرئيسية والمشروبات.');
+  final TextEditingController _originalPriceController = TextEditingController(text: '200.0');
+  final TextEditingController _discountedPriceController = TextEditingController(text: '140.0');
+
+  final List<String> _availableCategories = [
+    'المطاعم',
+    'الكافيهات',
+    'التسوق',
+    'عروض ساخنة',
+  ];
+
+  final List<String> _allBranches = [
+    'فرع وسط البلد (الرئيسي)',
+    'فرع الزمالك - شارع 26 يوليو',
+    'فرع المعادي - شارع 233',
+    'فرع التجمع الخامس - سيتي سنتر',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.addListener(_updateFormState);
+    _descriptionController.addListener(_updateFormState);
+    _originalPriceController.addListener(_updateFormState);
+    _discountedPriceController.addListener(_updateFormState);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _originalPriceController.dispose();
+    _discountedPriceController.dispose();
+    super.dispose();
+  }
+
+  void _updateFormState() {
+    setState(() {
+      _form.title = _titleController.text;
+      _form.description = _descriptionController.text;
+      _form.originalPrice = double.tryParse(_originalPriceController.text) ?? 200.0;
+      _form.discountedPrice = double.tryParse(_discountedPriceController.text) ?? 140.0;
+    });
+  }
+
+  Future<void> _selectExpiryDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _form.endDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('ar', 'EG'),
+    );
+    if (picked != null) {
+      setState(() {
+        _form.endDate = picked;
+      });
+    }
+  }
+
+  Future<void> _submitOffer() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final merchant = Provider.of<MerchantProvider>(context, listen: false);
+    final success = await merchant.createOffer(_form);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.successGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'تم إطلاق العرض بنجاح! خصم ${CurrencyFormatter.format(_form.creationFee, isArabic: true)} رسوم إنشاء.',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.errorRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(
+            merchant.errorMessage ?? 'فشل إطلاق العرض. يرجى التأكد من رصيد المحفظة.',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final merchant = Provider.of<MerchantProvider>(context);
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBackground,
+        appBar: AppBar(
+          backgroundColor: AppColors.darkSlate,
+          title: const Text(
+            'إطلاق عرض جديد',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19),
+          ),
+          elevation: 0,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Live Preview Card Widget at the top
+                    LiveOfferPreviewCard(
+                      form: _form,
+                      storeName: merchant.storeName,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // 2. Form Inputs Header
+                    const Text(
+                      'بيانات العرض الترويجي',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkSlate,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Offer Title Input
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'عنوان العرض (مثال: خصم 30% على الوجبات)',
+                        prefixIcon: Icon(Icons.title_rounded, color: AppColors.darkSlate),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال عنوان العرض' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Description Input
+                    TextFormField(
+                      controller: _descriptionController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'تفاصيل وشروط العرض',
+                        prefixIcon: Icon(Icons.description_outlined, color: AppColors.darkSlate),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Category Dropdown Selector
+                    DropdownButtonFormField<String>(
+                      initialValue: _form.category,
+                      decoration: const InputDecoration(
+                        labelText: 'القسم الرئيسي للعرض',
+                        prefixIcon: Icon(Icons.category_outlined, color: AppColors.darkSlate),
+                      ),
+                      items: _availableCategories.map((cat) {
+                        return DropdownMenuItem(
+                          value: cat,
+                          child: Text(cat, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _form.category = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Price Inputs Row (Original vs Discounted in D.L)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _originalPriceController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'السعر الأصلي (د.ل)',
+                              prefixIcon: Icon(Icons.money_off_rounded, color: AppColors.textMuted),
+                            ),
+                            validator: (v) {
+                              final val = double.tryParse(v ?? '');
+                              if (val == null || val <= 0) return 'سعر غير صالح';
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _discountedPriceController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'السعر بعد الخصم (د.ل)',
+                              prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.successGreen),
+                            ),
+                            validator: (v) {
+                              final val = double.tryParse(v ?? '');
+                              final orig = double.tryParse(_originalPriceController.text) ?? 0;
+                              if (val == null || val <= 0) return 'سعر غير صالح';
+                              if (val >= orig) return 'يجب أن يكون أقل من الأصلي';
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Calculated Percentage Badge Callout
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryAmber.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.percent_rounded, color: AppColors.primaryAmberDark, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            'معدل الخصم المحسوب: ${_form.discountBadgeText} (توفير ${CurrencyFormatter.format(_form.savingsAmount, isArabic: true)})',
+                            style: const TextStyle(
+                              color: AppColors.darkSlate,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Branch Picker Checkboxes
+                    const Text(
+                      'الفروع المتاحة للعرض:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.darkSlate),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.borderGrey),
+                      ),
+                      child: Column(
+                        children: _allBranches.map((branch) {
+                          final isSelected = _form.selectedBranches.contains(branch);
+                          return CheckboxListTile(
+                            activeColor: AppColors.primaryAmber,
+                            checkColor: AppColors.darkSlate,
+                            title: Text(branch, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            value: isSelected,
+                            onChanged: (bool? checked) {
+                              setState(() {
+                                if (checked == true) {
+                                  _form.selectedBranches.add(branch);
+                                } else {
+                                  _form.selectedBranches.remove(branch);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Date Expiry Picker
+                    InkWell(
+                      onTap: () => _selectExpiryDate(context),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderGrey),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.calendar_today_rounded, color: AppColors.darkSlate, size: 18),
+                                SizedBox(width: 10),
+                                Text(
+                                  'تاريخ انتهاء صلاحية العرض',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '${_form.endDate.year}-${_form.endDate.month.toString().padLeft(2, '0')}-${_form.endDate.day.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryAmberDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Creation Fee Notice Badge
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkSlate,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primaryAmber, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'رسوم إطلاق العرض الترويجي',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'سيتم خصم ${CurrencyFormatter.format(_form.creationFee, isArabic: true)} تلقائياً من محفظة التاجر عند الإطلاق.',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Launch Action Button
+                    merchant.isLoading
+                        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryAmber))
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryAmber,
+                              foregroundColor: AppColors.darkSlate,
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: _submitOffer,
+                            child: const Text(
+                              'إطلاق العرض الآن وتطبيقه للعملاء',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
