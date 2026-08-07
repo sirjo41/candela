@@ -126,14 +126,18 @@ class OfferController extends Controller
                     'is_active' => true,
                 ]);
 
-                // Create corresponding Coupon record in MySQL for Filament Admin Panel
+                // Create corresponding Coupon record in MySQL
+                $rawDiscountType = strtolower($request->discount_type ?? 'percentage');
+                $couponDiscountType = ($rawDiscountType === 'fixed' || $rawDiscountType === 'fixed_amount') ? 'fixed_amount' : 'percentage';
+
                 Coupon::create([
                     'store_id' => $store->id,
                     'offer_id' => $createdOffer->id,
+                    'campaign_id' => $request->filled('campaign_id') ? (int) $request->campaign_id : null,
                     'title' => $createdOffer->title,
                     'code' => 'CPN-' . $createdOffer->id . '-' . strtoupper(substr(md5(uniqid()), 0, 4)),
-                    'discount_type' => 'percentage',
-                    'discount_value' => $discountRate,
+                    'discount_type' => $couponDiscountType,
+                    'discount_value' => $request->discount_value ?? $discountRate ?? 20.00,
                     'redemption_fee' => $redemptionFee,
                     'expires_at' => $request->valid_until ?? now()->addDays(30),
                     'is_active' => true,
@@ -178,6 +182,68 @@ class OfferController extends Controller
                 'error_code' => 'OFFER_CREATION_FAILED',
             ], 500);
         }
+    }
+
+    /**
+     * POST /api/v1/merchant/offers/{id}/update
+     * Updates existing offer and syncs changes to MySQL coupons and campaigns.
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $offer = Offer::find($id);
+
+        if (! $offer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Offer not found.',
+                'error_code' => 'RESOURCE_NOT_FOUND',
+            ], 404);
+        }
+
+        if ($request->filled('title')) {
+            $offer->title = $request->title;
+        }
+        if ($request->filled('description')) {
+            $offer->description = $request->description;
+        }
+        if ($request->filled('category')) {
+            $offer->category = $request->category;
+        }
+        if ($request->filled('discount_badge')) {
+            $offer->discount_badge = $request->discount_badge;
+        }
+        if ($request->filled('original_price')) {
+            $offer->original_price = (float) $request->original_price;
+        }
+        if ($request->filled('discount_rate')) {
+            $offer->discount_rate = (float) $request->discount_rate;
+        }
+        if ($request->filled('final_price')) {
+            $offer->final_price = (float) $request->final_price;
+        }
+        if ($request->filled('valid_until')) {
+            $offer->valid_until = $request->valid_until;
+        }
+        if ($request->has('is_active')) {
+            $offer->is_active = (bool) $request->is_active;
+        }
+
+        $offer->save();
+
+        // Sync with linked Coupon
+        $coupon = Coupon::where('offer_id', $offer->id)->first();
+        if ($coupon) {
+            if ($request->filled('title')) $coupon->title = $offer->title;
+            if ($request->filled('valid_until')) $coupon->expires_at = $offer->valid_until;
+            if ($request->filled('discount_value')) $coupon->discount_value = (float) $request->discount_value;
+            $coupon->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Offer updated successfully.',
+            'data' => new OfferResource($offer->load('store')),
+        ]);
     }
 
     /**

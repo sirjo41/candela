@@ -46,6 +46,13 @@ class StoreResource extends Resource
                     ->tel()
                     ->required(),
 
+                TextInput::make('balance')
+                    ->label('Store Wallet Balance / رصيد محفظة التاجر (د.ل)')
+                    ->numeric()
+                    ->prefix('D.L')
+                    ->default(500)
+                    ->required(),
+
                 TextInput::make('creation_fee_rate')
                     ->label('Creation Fee Rate ($)')
                     ->numeric()
@@ -149,6 +156,13 @@ class StoreResource extends Resource
                 TextColumn::make('phone')
                     ->label('الهاتف')
                     ->icon('heroicon-m-phone'),
+
+                TextColumn::make('balance')
+                    ->label('رصيد المحفظة')
+                    ->money('LYD')
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-m-wallet'),
 
                 IconColumn::make('is_active')
                     ->label('الحالة')

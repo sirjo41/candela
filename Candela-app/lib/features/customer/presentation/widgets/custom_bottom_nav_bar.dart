@@ -40,11 +40,11 @@ class CustomBottomNavBar extends StatelessWidget {
                 label: 'استكشف',
               ),
 
-              // 2. Offers Tab (العروض)
+              // 2. Campaigns Tab (الحملات)
               _buildNavItem(
                 index: 1,
-                icon: Icons.local_offer_rounded,
-                label: 'العروض',
+                icon: Icons.campaign_rounded,
+                label: 'الحملات',
               ),
 
               // 3. Floating Action Center QR / Near You Button (قريب منك)

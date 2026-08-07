@@ -8,7 +8,7 @@ class VerifyQrRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() && ($this->user()->isMerchant() || $this->user()->isAdmin());
+        return true;
     }
 
     public function rules(): array

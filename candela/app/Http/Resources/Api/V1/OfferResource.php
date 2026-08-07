@@ -21,6 +21,11 @@ class OfferResource extends JsonResource
                 ->exists();
         }
 
+        $claimedCount = ClaimedCoupon::whereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))->count();
+        $redemptionsCount = ClaimedCoupon::where('status', 'redeemed')
+            ->whereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))
+            ->count();
+
         return [
             'id' => $this->id,
             'store_id' => $this->store_id,
@@ -47,6 +52,11 @@ class OfferResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'claimed' => $isClaimed,
             'is_claimed' => $isClaimed,
+            'claimed_count' => $claimedCount,
+            'claims' => $claimedCount,
+            'redemptions_count' => $redemptionsCount,
+            'redemptions' => $redemptionsCount,
+            'uses_count' => $redemptionsCount,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

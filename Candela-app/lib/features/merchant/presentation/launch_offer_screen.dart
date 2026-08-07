@@ -21,14 +21,19 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
 
   final TextEditingController _titleController = TextEditingController(text: 'اشتري 2 واحصل على 1 مجاناً');
   final TextEditingController _descriptionController = TextEditingController(text: 'احصل على قطعة مجانية عند شراء قطعتين من أي قسم.');
+  final TextEditingController _discountValueController = TextEditingController(text: '20');
   final TextEditingController _originalPriceController = TextEditingController();
   final TextEditingController _discountedPriceController = TextEditingController();
 
   final List<String> _availableCategories = [
     'المطاعم',
-    'الكافيهات',
-    'التسوق',
-    'عروض ساخنة',
+    'الملابس',
+    'الإلكترونيات',
+    'الجمال',
+    'الرياضة',
+    'أطفال',
+    'سفر',
+    'سيارات',
   ];
 
   final List<String> _allBranches = [
@@ -48,6 +53,7 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
     super.initState();
     _titleController.addListener(_updateFormState);
     _descriptionController.addListener(_updateFormState);
+    _discountValueController.addListener(_updateFormState);
     _originalPriceController.addListener(_updateFormState);
     _discountedPriceController.addListener(_updateFormState);
     _updateFormState();
@@ -57,6 +63,7 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _discountValueController.dispose();
     _originalPriceController.dispose();
     _discountedPriceController.dispose();
     super.dispose();
@@ -66,6 +73,7 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
     setState(() {
       _form.title = _titleController.text;
       _form.description = _descriptionController.text;
+      _form.discountValue = double.tryParse(_discountValueController.text);
       _form.originalPrice = double.tryParse(_originalPriceController.text);
       _form.discountedPrice = double.tryParse(_discountedPriceController.text);
     });
@@ -77,7 +85,6 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
       initialDate: _form.endDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      locale: const Locale('ar', 'EG'),
     );
     if (picked != null) {
       setState(() {
@@ -243,65 +250,164 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                         }
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // Price Inputs Row (Original vs Discounted in D.L)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _originalPriceController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'السعر الأصلي (د.ل)',
-                              prefixIcon: Icon(Icons.money_off_rounded, color: AppColors.textMuted),
-                            ),
-                            validator: (v) {
-                              final val = double.tryParse(v ?? '');
-                              if (val == null || val <= 0) return 'سعر غير صالح';
-                              return null;
-                            },
-                          ),
+                    // Campaign Participation Dropdown Selector (Optional or Null)
+                    DropdownButtonFormField<int?>(
+                      initialValue: _form.campaignId,
+                      decoration: const InputDecoration(
+                        labelText: 'المشاركة في حملة ترويجية (اختياري / Null)',
+                        hintText: 'اختر حملة لتضمين العرض بها أو اتركه فارغاً',
+                        prefixIcon: Icon(Icons.campaign_rounded, color: AppColors.copperOrange),
+                      ),
+                      items: const [
+                        DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('بدون مشاركة في حملة (عرض مستقل)', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _discountedPriceController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'السعر بعد الخصم (د.ل)',
-                              prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.successGreen),
-                            ),
-                            validator: (v) {
-                              final val = double.tryParse(v ?? '');
-                              final orig = double.tryParse(_originalPriceController.text) ?? 0;
-                              if (val == null || val <= 0) return 'سعر غير صالح';
-                              if (val >= orig) return 'يجب أن يكون أقل من الأصلي';
-                              return null;
-                            },
-                          ),
+                        DropdownMenuItem<int?>(
+                          value: 1,
+                          child: Text('مهرجان الصيف للتسوق 2026 ✦ (حملة نشطة)', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold)),
+                        ),
+                        DropdownMenuItem<int?>(
+                          value: 2,
+                          child: Text('حملة العودة للمدارس والجامعات', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold)),
+                        ),
+                        DropdownMenuItem<int?>(
+                          value: 3,
+                          child: Text('مهرجان التخفيضات الكبرى', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold)),
                         ),
                       ],
+                      onChanged: (val) {
+                        setState(() {
+                          _form.campaignId = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Discount Type Choice Header (Percentage vs Fixed Price)
+                    const Text(
+                      'نوع الخصم والتخفيض:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.darkSlate),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.borderGrey),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _form.discountType = 'percentage';
+                                  if (_discountValueController.text == '10' || _discountValueController.text.isEmpty) {
+                                    _discountValueController.text = '20';
+                                  }
+                                  _updateFormState();
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: _form.discountType == 'percentage' ? AppColors.copperOrange : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'نسبة مئوية (%)',
+                                    style: TextStyle(
+                                      color: _form.discountType == 'percentage' ? Colors.white : AppColors.darkSlate,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _form.discountType = 'fixed';
+                                  if (_discountValueController.text == '20' || _discountValueController.text.isEmpty) {
+                                    _discountValueController.text = '10';
+                                  }
+                                  _updateFormState();
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: _form.discountType == 'fixed' ? AppColors.copperOrange : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'مبلغ ثابت (د.ل)',
+                                    style: TextStyle(
+                                      color: _form.discountType == 'fixed' ? Colors.white : AppColors.darkSlate,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Discount Value Input (e.g. 20% or 10 D.L)
+                    TextFormField(
+                      controller: _discountValueController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: _form.discountType == 'fixed' ? 'قيمة الخصم بالدينار (مثال: 10)' : 'نسبة الخصم مئوية (مثال: 20)',
+                        hintText: _form.discountType == 'fixed' ? '10' : '20',
+                        prefixIcon: Icon(
+                          _form.discountType == 'fixed' ? Icons.attach_money_rounded : Icons.percent_rounded,
+                          color: AppColors.copperOrange,
+                        ),
+                        suffixText: _form.discountType == 'fixed' ? 'د.ل' : '%',
+                      ),
+                      validator: (v) {
+                        final val = double.tryParse(v ?? '');
+                        if (val == null || val <= 0) return 'يرجى إدخال قيمة الخصم';
+                        if (_form.discountType == 'percentage' && val > 100) return 'لا يمكن أن تتجاوز النسبة 100%';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 10),
 
-                    // Calculated Percentage Badge Callout
+                    // Badge Live Display Callout
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppColors.primaryAmber.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.percent_rounded, color: AppColors.primaryAmberDark, size: 18),
+                          const Icon(Icons.stars_rounded, color: AppColors.copperOrange, size: 20),
                           const SizedBox(width: 8),
-                          Text(
-                            'معدل الخصم المحسوب: ${_form.discountBadgeText} (توفير ${CurrencyFormatter.format(_form.savingsAmount, isArabic: true)})',
-                            style: const TextStyle(
-                              color: AppColors.darkSlate,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                          Expanded(
+                            child: Text(
+                              'الشارة الظاهرة للعميل: ${_form.discountBadgeText}',
+                              style: const TextStyle(
+                                color: AppColors.darkSlate,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
                             ),
                           ),
                         ],

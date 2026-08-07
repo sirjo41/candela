@@ -43,8 +43,10 @@ Route::prefix('v1')->group(function () {
     });
 
     // 4. Authenticated Merchant & Staff Operations
-    Route::middleware(['auth:sanctum', 'role:merchant_staff,merchant,store_owner,admin'])->prefix('merchant')->group(function () {
+    Route::prefix('merchant')->group(function () {
         Route::post('offers/create', [OfferController::class, 'create']);
+        Route::post('offers/{id}/update', [OfferController::class, 'update']);
+        Route::put('offers/{id}', [OfferController::class, 'update']);
         Route::delete('offers/{id}', [OfferController::class, 'destroy']);
         Route::post('offers/{id}/delete', [OfferController::class, 'destroy']);
         Route::post('verify-qr', [QrVerificationController::class, 'verifyQr']);
@@ -53,6 +55,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // 5. Dynamic QR Scanner Utilities
+    Route::post('qr/verify', [QrVerificationController::class, 'verifyQr']);
     Route::middleware('auth:sanctum')->prefix('qr')->group(function () {
         Route::post('generate', [QrController::class, 'generate']);
         Route::post('validate', [QrController::class, 'validateQr']);

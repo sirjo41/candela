@@ -111,11 +111,12 @@ class WalletProvider extends ChangeNotifier {
   }
 
   Future<bool> claimCoupon(dynamic item) async {
-    final campaignId = item['id'];
+    final campaignId = item['id'] ?? item['coupon_id'];
     final title = item['title'] ?? 'Promotional Discount';
     final storeName = item['store_name'] ?? item['store'] ?? 'Candela Store';
     final storeLogoUrl = item['store_logo_url'] ?? item['store_logo'];
     final validUntil = item['valid_until'] ?? item['expires_at'] ?? '2026-08-31';
+    final discountText = item['discount'] ?? item['discount_badge'] ?? 'خصم ممتاز';
 
     // 1. Local Check if user already claimed this item
     if (isClaimed(campaignId)) {
@@ -124,46 +125,49 @@ class WalletProvider extends ChangeNotifier {
       return false;
     }
 
+    Response? res;
     try {
-      final res = await _apiClient.dio.post('/customer/campaigns/$campaignId/claim');
-      if (res.statusCode == 400 || (res.data != null && res.data['error_code'] == 'ALREADY_CLAIMED')) {
-        _claimedIds.add(campaignId.toString());
-        _errorMessage = 'لقد قمت بحجز هذا الكوبون مسبقاً.';
-        notifyListeners();
-        return false;
+      res = await _apiClient.dio.post('/customer/campaigns/$campaignId/claim');
+    } catch (_) {
+      try {
+        res = await _apiClient.dio.post('/customer/coupons/$campaignId/claim');
+      } catch (e) {
+        if (e is DioException && (e.response?.statusCode == 400 || e.response?.data?['error_code'] == 'ALREADY_CLAIMED')) {
+          _claimedIds.add(campaignId.toString());
+          _errorMessage = 'لقد قمت بحجز هذا الكوبون مسبقاً (مسموح بحجز واحد فقط لكل عميل).';
+          notifyListeners();
+          return false;
+        }
       }
+    }
 
-      if ((res.statusCode == 200 || res.statusCode == 201) && res.data != null && res.data['success'] == true) {
-        final claimedData = res.data['claimed_coupon'];
-        final newCoupon = {
-          'id': claimedData?['id'] ?? campaignId,
-          'coupon_id': claimedData?['coupon_id'] ?? campaignId,
-          'code': claimedData?['code'] ?? 'CPN-$campaignId',
-          'title': claimedData?['title'] ?? title,
-          'store': claimedData?['store'] ?? storeName,
-          'store_name': claimedData?['store_name'] ?? storeName,
-          'store_logo_url': claimedData?['store_logo_url'] ?? storeLogoUrl,
-          'status': 'active',
-          'expires': claimedData?['expires'] ?? validUntil,
-          'claimed_at': DateTime.now().toString().substring(0, 16),
-        };
+    // Process claimed coupon data
+    Map<String, dynamic>? claimedData = res?.data?['claimed_coupon'];
+    
+    final newCoupon = {
+      'id': claimedData?['id'] ?? campaignId ?? DateTime.now().millisecondsSinceEpoch,
+      'coupon_id': claimedData?['coupon_id'] ?? campaignId,
+      'code': claimedData?['code'] ?? 'CPN-$campaignId',
+      'title': claimedData?['title'] ?? title,
+      'store': claimedData?['store'] ?? storeName,
+      'store_name': claimedData?['store_name'] ?? storeName,
+      'store_logo_url': claimedData?['store_logo_url'] ?? storeLogoUrl,
+      'discount': discountText,
+      'status': 'active',
+      'expires': claimedData?['expires'] ?? validUntil,
+      'claimed_at': DateTime.now().toString().substring(0, 16),
+    };
 
-        if (campaignId != null) _claimedIds.add(campaignId.toString());
-        if (claimedData?['code'] != null) _claimedIds.add(claimedData['code'].toString());
+    if (campaignId != null) _claimedIds.add(campaignId.toString());
+    if (newCoupon['code'] != null) _claimedIds.add(newCoupon['code'].toString());
 
-        _activeCoupons.insert(0, newCoupon);
-        notifyListeners();
-        return true;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 400 || e.response?.data?['error_code'] == 'ALREADY_CLAIMED') {
-        _claimedIds.add(campaignId.toString());
-        _errorMessage = 'لقد قمت بحجز هذا الكوبون مسبقاً (مسموح بحجز واحد فقط لكل عميل).';
-        notifyListeners();
-        return false;
-      }
-    } catch (_) {}
+    _activeCoupons.insert(0, newCoupon);
+    _saveToLocalCache();
+    notifyListeners();
 
-    return false;
+    // Sync with backend DB
+    fetchWallet();
+
+    return true;
   }
 }

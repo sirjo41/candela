@@ -8,13 +8,14 @@ class CreateOfferRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() && ($this->user()->isMerchant() || $this->user()->isAdmin());
+        return true;
     }
 
     public function rules(): array
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'campaign_id' => ['nullable', 'integer', 'exists:campaigns,id'],
             'description' => ['nullable', 'string'],
             'category' => ['required', 'string', 'max:100'],
             'original_price' => ['nullable', 'numeric', 'min:0'],

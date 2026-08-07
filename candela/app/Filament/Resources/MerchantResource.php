@@ -107,6 +107,14 @@ class MerchantResource extends Resource
                     ->badge()
                     ->color('primary'),
 
+                TextColumn::make('store.balance')
+                    ->label('رصيد المحفظة')
+                    ->money('LYD')
+                    ->placeholder('0.00 د.ل')
+                    ->badge()
+                    ->color('success')
+                    ->icon('heroicon-m-wallet'),
+
                 TextColumn::make('role')
                     ->label('الدور')
                     ->badge()

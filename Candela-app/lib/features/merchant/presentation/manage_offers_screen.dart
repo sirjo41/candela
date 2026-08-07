@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import '../models/merchant_offer_item.dart';
 import '../providers/merchant_provider.dart';
 import 'launch_offer_screen.dart';
@@ -84,100 +83,355 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
 
   void _showEditModal(BuildContext context, MerchantOfferItem offer) {
     final titleController = TextEditingController(text: offer.title);
-    final origPriceController = TextEditingController(text: offer.originalPrice.toString());
-    final discPriceController = TextEditingController(text: offer.discountedPrice.toString());
+    final badgeController = TextEditingController(text: offer.discountBadge);
+    final descController = TextEditingController(text: offer.description);
+    String selectedCategory = offer.category.isNotEmpty ? offer.category : 'المطاعم';
+    bool isSaving = false;
+
+    final categories = ['المطاعم', 'الملابس', 'الإلكترونيات', 'الجمال', 'الرياضة', 'أطفال', 'سفر', 'سيارات'];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppColors.darkSlate,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('تعديل العرض الترويجي', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: titleController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'عنوان العرض',
-                        labelStyle: TextStyle(color: Colors.white70),
-                        prefixIcon: Icon(Icons.title, color: AppColors.primaryAmber),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: origPriceController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: const InputDecoration(
-                              labelText: 'السعر الأصلي (د.ل)',
-                              labelStyle: TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: discPriceController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: const InputDecoration(
-                              labelText: 'السعر بعد الخصم (د.ل)',
-                              labelStyle: TextStyle(color: Colors.white70),
-                            ),
-                          ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 580),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B1E26),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(28), bottom: Radius.circular(28)),
+                      border: Border.all(color: Colors.white12, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Handle & Close Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryAmber.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.edit_note_rounded, color: AppColors.primaryAmber, size: 22),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'تعديل العرض الترويجي',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                                onPressed: () => Navigator.pop(ctx),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 24, color: Colors.white12),
 
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryAmber,
-                        foregroundColor: AppColors.darkSlate,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          // 1. Title Field
+                          const Text(
+                            'عنوان العرض',
+                            style: TextStyle(color: AppColors.primaryAmber, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: titleController,
+                            style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w600),
+                            decoration: InputDecoration(
+                              hintText: 'أدخل عنوان العرض...',
+                              hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                              filled: true,
+                              fillColor: const Color(0xFF262A36),
+                              prefixIcon: const Icon(Icons.subtitles_rounded, color: AppColors.primaryAmber, size: 20),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Colors.white12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Colors.white12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.primaryAmber, width: 1.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 2. Category Dropdown
+                          const Text(
+                            'فئة العرض',
+                            style: TextStyle(color: AppColors.primaryAmber, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF262A36),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white12),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: categories.contains(selectedCategory) ? selectedCategory : categories.first,
+                                isExpanded: true,
+                                dropdownColor: const Color(0xFF262A36),
+                                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryAmber),
+                                items: categories.map((cat) {
+                                  return DropdownMenuItem(
+                                    value: cat,
+                                    child: Text(cat, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setModalState(() {
+                                      selectedCategory = val;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 3. Discount Badge Field
+                          const Text(
+                            'شارة ونسبة الخصم',
+                            style: TextStyle(color: AppColors.primaryAmber, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: badgeController,
+                            style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w600),
+                            decoration: InputDecoration(
+                              hintText: 'مثال: وفر حتى 20% أو وفر حتى 10 د.ل',
+                              hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                              filled: true,
+                              fillColor: const Color(0xFF262A36),
+                              prefixIcon: const Icon(Icons.stars_rounded, color: AppColors.primaryAmber, size: 20),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Colors.white12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Colors.white12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.primaryAmber, width: 1.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Quick Preset Badge Chips
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              'وفر حتى 20%',
+                              'وفر حتى 30%',
+                              'وفر حتى 50%',
+                              'وفر حتى 5 د.ل',
+                              'وفر حتى 10 د.ل',
+                              'عرض خاص',
+                            ].map((preset) {
+                              return ActionChip(
+                                backgroundColor: const Color(0xFF262A36),
+                                side: BorderSide(color: badgeController.text == preset ? AppColors.primaryAmber : Colors.white12),
+                                label: Text(
+                                  preset,
+                                  style: TextStyle(
+                                    color: badgeController.text == preset ? AppColors.primaryAmber : Colors.white70,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setModalState(() {
+                                    badgeController.text = preset;
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 4. Description Field
+                          const Text(
+                            'وصف العرض والشروط',
+                            style: TextStyle(color: AppColors.primaryAmber, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: descController,
+                            maxLines: 2,
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'أدخل التفاصيل الشروط والتفاصيل المتاحة...',
+                              hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                              filled: true,
+                              fillColor: const Color(0xFF262A36),
+                              prefixIcon: const Icon(Icons.description_rounded, color: AppColors.primaryAmber, size: 20),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Colors.white12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Colors.white12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.primaryAmber, width: 1.5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 5. Expiry Date (Locked / Read-Only Field)
+                          const Text(
+                            'تاريخ الانتهاء',
+                            style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.lock_clock_rounded, color: Colors.white38, size: 20),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'ينتهي في ${offer.validUntil.toIso8601String().substring(0, 10)}',
+                                  style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w600, fontSize: 14),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white10,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'مقفول (غير قابل للتعديل)',
+                                    style: TextStyle(color: Colors.white38, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Save Action Button
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryAmber,
+                              foregroundColor: AppColors.darkSlate,
+                              minimumSize: const Size.fromHeight(50),
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: isSaving ? null : () async {
+                              final newTitle = titleController.text.trim();
+                              final newBadge = badgeController.text.trim();
+                              final newDesc = descController.text.trim();
+
+                              if (newTitle.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('يرجى كتابة عنوان العرض.')),
+                                );
+                                return;
+                              }
+
+                              setModalState(() {
+                                isSaving = true;
+                              });
+
+                              final merchant = Provider.of<MerchantProvider>(context, listen: false);
+                              final success = await merchant.updateOffer(offer.id, {
+                                'title': newTitle,
+                                'category': selectedCategory,
+                                'discount_badge': newBadge.isNotEmpty ? newBadge : 'عرض خاص',
+                                'description': newDesc,
+                              });
+
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                              }
+
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: success ? AppColors.successGreen : AppColors.errorRed,
+                                    behavior: SnackBarBehavior.floating,
+                                    content: Text(success ? 'تم تحديث كافة بيانات العرض بنجاح وبقائه متزامناً مع قاعدة البيانات.' : 'حدث خطأ أثناء تعديل العرض.'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: isSaving
+                                ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.darkSlate),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.save_rounded, size: 20),
+                                      SizedBox(width: 8),
+                                      Text('حفظ التعديلات والتزامن', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    ],
+                                  ),
+                          ),
+                        ],
                       ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('تم تحديث بيانات العرض بنجاح.')),
-                        );
-                      },
-                      child: const Text('حفظ التعديلات', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -231,9 +485,8 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
             final activeOffers = allOffers.where((o) => o.status == 'active').toList();
             final pausedOffers = allOffers.where((o) => o.status != 'active').toList();
 
-            final totalSales = allOffers.fold(0.0, (sum, item) => sum + item.totalSalesGenerated);
-            final totalViews = allOffers.fold(0, (sum, item) => sum + item.viewsCount);
-            final totalRedemptions = allOffers.fold(0, (sum, item) => sum + item.redemptionsCount);
+            final totalClaimed = allOffers.fold(0, (sum, item) => sum + item.claimedCount);
+            final totalRedeemed = allOffers.fold(0, (sum, item) => sum + item.redemptionsCount);
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -253,11 +506,9 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                         children: [
                           _buildHeaderStat('العروض', '${allOffers.length}', AppColors.primaryAmber),
                           const SizedBox(width: 24),
-                          _buildHeaderStat('المشاهدات', '$totalViews', Colors.white),
+                          _buildHeaderStat('المحجوزة', '$totalClaimed', Colors.white),
                           const SizedBox(width: 24),
-                          _buildHeaderStat('الاستخدامات', '$totalRedemptions', AppColors.successGreen),
-                          const SizedBox(width: 24),
-                          _buildHeaderStat('الأرباح', CurrencyFormatter.format(totalSales, isArabic: true), AppColors.primaryAmberDark),
+                          _buildHeaderStat('عدد الاستعمالات', '$totalRedeemed', AppColors.primaryAmberDark),
                         ],
                       ),
                     ),
@@ -418,27 +669,54 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                 ),
                 const SizedBox(height: 12),
 
-                // Pricing Row
+                // Coupon Metrics Analytics Row (الكوبونات المحجوزة & الكوبونات المستعملة)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkSlate.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderGrey.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.bookmark_added_rounded, color: AppColors.copperOrange, size: 16),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'المحجوزات: ',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          Text(
+                            '${offer.claimedCount}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.darkSlate),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.verified_rounded, color: AppColors.successGreen, size: 16),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'عدد الاستعمالات: ',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          Text(
+                            '${offer.redemptionsCount}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.successGreen),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Active Status Badge Row
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text(
-                      CurrencyFormatter.format(offer.originalPrice, isArabic: true),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      CurrencyFormatter.format(offer.discountedPrice, isArabic: true),
-                      style: const TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.darkSlate,
-                      ),
-                    ),
-                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
@@ -467,7 +745,7 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                 ),
                 const SizedBox(height: 12),
 
-                // Real Usage & Redemptions Surface
+                // Real Usage Surface
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -475,13 +753,8 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                     color: AppColors.darkSlate,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildMetricTile('الكوبونات المحجوزة', '${offer.claimedCount}', Icons.confirmation_num_rounded, AppColors.primaryAmber),
-                      Container(height: 24, width: 1, color: Colors.white24),
-                      _buildMetricTile('الاستخدامات الفعلية', '${offer.redemptionsCount}', Icons.qr_code_scanner_rounded, AppColors.successGreen),
-                    ],
+                  child: Center(
+                    child: _buildMetricTile('الكوبونات المحجوزة', '${offer.claimedCount}', Icons.confirmation_num_rounded, AppColors.primaryAmber),
                   ),
                 ),
                 const SizedBox(height: 10),

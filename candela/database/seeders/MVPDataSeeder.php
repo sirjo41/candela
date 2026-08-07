@@ -164,94 +164,105 @@ class MVPDataSeeder extends Seeder
 
         // 5. Campaigns
         $campaign1 = Campaign::firstOrCreate(
-            ['title' => 'Summer Loyalty Blast'],
-            [
-                'description' => 'Special summer discounts and double loyalty points across participating stores.',
-                'banner_image' => 'campaigns/summer-blast.jpg',
-                'start_date' => now(),
-                'end_date' => now()->addDays(30),
-                'is_active' => true,
-            ]
+          ['title' => 'حملة الانتعاش الصيفي'],
+          [
+            'description' => 'استمتع بأفضل المشروبات الباردة والحلويات الصيفية مع تخفيضات مباشرة.',
+            'banner_image' => 'campaigns/summer-blast.jpg',
+            'start_date' => now(),
+            'end_date' => now()->addDays(30),
+            'is_active' => true,
+          ]
         );
 
         $campaign2 = Campaign::firstOrCreate(
-            ['title' => 'Back to School Savings'],
-            [
-                'description' => 'Great deals for students and families.',
-                'banner_image' => 'campaigns/back-to-school.jpg',
-                'start_date' => now(),
-                'end_date' => now()->addDays(60),
-                'is_active' => true,
-            ]
+          ['title' => 'حملة العودة للمدارس'],
+          [
+            'description' => 'عروض حصرية على الوجبات السريعة والمستلزمات لجميع الطلاب.',
+            'banner_image' => 'campaigns/back-to-school.jpg',
+            'start_date' => now(),
+            'end_date' => now()->addDays(60),
+            'is_active' => true,
+          ]
+        );
+
+        $campaign3 = Campaign::firstOrCreate(
+          ['title' => 'عروض نهاية الأسبوع المذهلة'],
+          [
+            'description' => 'تخفيضات خاصة على جميع الفروع في الويك إند.',
+            'banner_image' => 'campaigns/weekend-deals.jpg',
+            'start_date' => now(),
+            'end_date' => now()->addDays(14),
+            'is_active' => true,
+          ]
         );
 
         // 6. Coupons
         $coupon1 = Coupon::firstOrCreate(
-            ['code' => 'COLDBREW20'],
-            [
-                'store_id' => $store1->id,
-                'campaign_id' => $campaign1->id,
-                'title' => '20% Off Cold Brew',
-                'discount_type' => 'percentage',
-                'discount_value' => 20.00,
-                'creation_fee' => 5.00,
-                'redemption_fee' => 0.50,
-                'max_uses' => 100,
-                'uses_count' => 2,
-                'expires_at' => now()->addDays(30),
-                'is_active' => true,
-            ]
+          ['code' => 'COLDBREW20'],
+          [
+            'store_id' => $store1->id,
+            'campaign_id' => $campaign1->id,
+            'title' => 'خصم 20% على القهوة الباردة',
+            'discount_type' => 'percentage',
+            'discount_value' => 20.00,
+            'creation_fee' => 5.00,
+            'redemption_fee' => 0.50,
+            'max_uses' => 100,
+            'uses_count' => 2,
+            'expires_at' => now()->addDays(30),
+            'is_active' => true,
+          ]
         );
 
         $coupon2 = Coupon::firstOrCreate(
-            ['code' => 'FREEMUFFIN'],
-            [
-                'store_id' => $store1->id,
-                'campaign_id' => $campaign1->id,
-                'title' => 'Free Muffin with Espresso',
-                'discount_type' => 'fixed_amount',
-                'discount_value' => 3.50,
-                'creation_fee' => 5.00,
-                'redemption_fee' => 0.50,
-                'max_uses' => 50,
-                'uses_count' => 1,
-                'expires_at' => now()->addDays(20),
-                'is_active' => true,
-            ]
+          ['code' => 'FREEMUFFIN'],
+          [
+            'store_id' => $store1->id,
+            'campaign_id' => $campaign1->id,
+            'title' => 'خصم 5 د.ل على المأكولات والمشروبات',
+            'discount_type' => 'fixed',
+            'discount_value' => 5.00,
+            'creation_fee' => 5.00,
+            'redemption_fee' => 0.50,
+            'max_uses' => 50,
+            'uses_count' => 1,
+            'expires_at' => now()->addDays(20),
+            'is_active' => true,
+          ]
         );
 
         $coupon3 = Coupon::firstOrCreate(
-            ['code' => 'BURGERBOGO'],
-            [
-                'store_id' => $store2->id,
-                'campaign_id' => $campaign2->id,
-                'title' => 'Buy 1 Get 1 Burger 50% Off',
-                'discount_type' => 'percentage',
-                'discount_value' => 50.00,
-                'creation_fee' => 10.00,
-                'redemption_fee' => 1.00,
-                'max_uses' => 200,
-                'uses_count' => 1,
-                'expires_at' => now()->addDays(45),
-                'is_active' => true,
-            ]
+          ['code' => 'BURGERBOGO'],
+          [
+            'store_id' => $store2->id,
+            'campaign_id' => $campaign2->id,
+            'title' => 'خصم 50% على الوجبة الثانية',
+            'discount_type' => 'percentage',
+            'discount_value' => 50.00,
+            'creation_fee' => 10.00,
+            'redemption_fee' => 1.00,
+            'max_uses' => 200,
+            'uses_count' => 1,
+            'expires_at' => now()->addDays(45),
+            'is_active' => true,
+          ]
         );
 
         $coupon4 = Coupon::firstOrCreate(
-            ['code' => 'COMBO5OFF'],
-            [
-                'store_id' => $store2->id,
-                'campaign_id' => null,
-                'title' => '$5 Off Any Combo Meal',
-                'discount_type' => 'fixed_amount',
-                'discount_value' => 5.00,
-                'creation_fee' => 10.00,
-                'redemption_fee' => 1.00,
-                'max_uses' => 150,
-                'uses_count' => 1,
-                'expires_at' => now()->addDays(60),
-                'is_active' => true,
-            ]
+          ['code' => 'COMBO5OFF'],
+          [
+            'store_id' => $store2->id,
+            'campaign_id' => $campaign3->id,
+            'title' => 'خصم 10 د.ل على وجبات الكومبو',
+            'discount_type' => 'fixed',
+            'discount_value' => 10.00,
+            'creation_fee' => 10.00,
+            'redemption_fee' => 1.00,
+            'max_uses' => 150,
+            'uses_count' => 1,
+            'expires_at' => now()->addDays(60),
+            'is_active' => true,
+          ]
         );
 
         // 7. Redemptions

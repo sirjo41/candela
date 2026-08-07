@@ -351,10 +351,10 @@ class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.darkBackground : AppColors.cardSurface,
+                                color: isSelected ? const Color(0xFF2B2620) : const Color(0xFF1E1A16),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: isSelected ? AppColors.primaryAmber : Colors.white10,
+                                  color: isSelected ? AppColors.primaryAmber : Colors.white12,
                                   width: isSelected ? 1.5 : 1.0,
                                 ),
                               ),

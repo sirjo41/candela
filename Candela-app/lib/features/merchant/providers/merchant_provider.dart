@@ -28,7 +28,7 @@ class MerchantProvider extends ChangeNotifier {
 
   // Merchant Store & Wallet State
   String _storeName = 'متجري - فرع وسط البلد';
-  double _walletBalance = 1500.00;
+  double _walletBalance = 500.00;
   int _activeOffersCount = 0;
   int _totalRedemptions = 0;
   final List<dynamic> _recentRedemptions = [];
@@ -62,7 +62,7 @@ class MerchantProvider extends ChangeNotifier {
     notifyListeners();
 
     if (isMockMode) {
-      _walletBalance = 1500.00;
+      _walletBalance = 500.00;
       _activeOffersCount = _merchantOffers.where((o) => o.status == 'active').length;
       _totalRedemptions = _merchantOffers.fold(0, (sum, item) => sum + item.redemptionsCount);
       _isLoading = false;
@@ -74,11 +74,11 @@ class MerchantProvider extends ChangeNotifier {
       final response = await _apiClient.dio.get('/merchant/dashboard');
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
-        if (data['store'] != null) {
+        if (data['wallet_balance'] != null) {
+          _walletBalance = (data['wallet_balance'] as num).toDouble();
+        } else if (data['store'] != null && data['store']['balance'] != null) {
           _storeName = data['store']['name'] ?? _storeName;
-          _walletBalance = (data['store']['balance'] as num?)?.toDouble() ??
-                           (data['store']['wallet_balance'] as num?)?.toDouble() ??
-                           (data['wallet_balance'] as num?)?.toDouble() ?? _walletBalance;
+          _walletBalance = (data['store']['balance'] as num).toDouble();
         }
         _activeOffersCount = data['active_coupons_count'] ?? data['active_offers_count'] ?? _activeOffersCount;
         _totalRedemptions = data['todays_redemptions'] ?? data['total_redemptions'] ?? _totalRedemptions;
@@ -129,6 +129,45 @@ class MerchantProvider extends ChangeNotifier {
         await _apiClient.dio.delete('/merchant/offers/$offerId');
       } catch (_) {}
     }
+  }
+
+  /// Update existing Offer in MySQL Database & local state
+  Future<bool> updateOffer(String offerId, Map<String, dynamic> updateData) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    bool serverSuccess = false;
+    try {
+      final response = await _apiClient.dio.post(
+        '/merchant/offers/$offerId/update',
+        data: updateData,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        serverSuccess = true;
+        await fetchMerchantOffers();
+      }
+    } catch (_) {}
+
+    // Optimistically update local list so UI updates immediately
+    final index = _merchantOffers.indexWhere((o) => o.id == offerId);
+    if (index != -1) {
+      final cur = _merchantOffers[index];
+      _merchantOffers[index] = cur.copyWith(
+        title: updateData['title'] as String? ?? cur.title,
+        description: updateData['description'] as String? ?? cur.description,
+        category: updateData['category'] as String? ?? cur.category,
+        discountBadge: updateData['discount_badge'] as String? ?? cur.discountBadge,
+      );
+      notifyListeners();
+      _isLoading = false;
+      return true;
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return serverSuccess;
   }
 
   /// Launch New Offer Pipeline with Creation Fee deduction

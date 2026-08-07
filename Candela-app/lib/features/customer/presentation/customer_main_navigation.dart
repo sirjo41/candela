@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../providers/customer_feed_provider.dart';
@@ -10,6 +9,7 @@ import 'widgets/hero_promo_banner.dart';
 import 'widgets/offer_card.dart';
 import 'widgets/qr_coupon_bottom_sheet.dart';
 import 'widgets/custom_bottom_nav_bar.dart';
+import '../models/campaign_model.dart';
 
 /// Main Customer Navigation Scaffold
 /// Includes 1-tap role switching back to Merchant Portal for merchant users.
@@ -23,41 +23,55 @@ class CustomerMainNavigation extends StatefulWidget {
 class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   int _currentIndex = 0;
   int _walletSubTab = 0;
-  final ApiClient _apiClient = ApiClient();
 
-  void _claimOffer(BuildContext context, offer) {
+  void _claimOffer(BuildContext context, offer) async {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
     final feedProvider = Provider.of<CustomerFeedProvider>(context, listen: false);
 
-    feedProvider.markOfferClaimed(offer.id);
-
-    walletProvider.claimCoupon({
+    final success = await walletProvider.claimCoupon({
       'id': offer.id,
-      'title': offer.storeName,
+      'title': offer.title,
       'store_name': offer.storeName,
       'discount': offer.discountBadge,
       'valid_until': offer.validUntil.toIso8601String().substring(0, 10),
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.successGreen,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '${offer.storeName} offer added to your Wallet Pass Cards!',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+    if (success) {
+      feedProvider.markOfferClaimed(offer.id);
+    }
+
+    if (context.mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.successGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'تم إضافة عرض ${offer.storeName} إلى بطاقات محفظتك بنجاح!',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.copperOrange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Text(walletProvider.errorMessage ?? 'العرض موجود بالفعل في محفظتك.'),
+          ),
+        );
+      }
+    }
   }
 
   void _openQrModalSheet() {
@@ -134,7 +148,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary, size: 22),
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('لا توجد إشعارات جديدة حالياً.'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
                     ),
                   ),
 
@@ -190,7 +212,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                 index: _currentIndex,
                 children: [
                   _buildHomeTab(),
-                  _buildOffersTab(),
+                  _buildCampaignsTab(),
                   const SizedBox.shrink(),
                   _buildWalletTab(),
                   _buildProfileTab(user, auth),
@@ -312,6 +334,124 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     // Hero Banner Cards (Silver Level + Exclusive Offer)
                     HeroPromoBanner(
                       onQrPassTap: _openQrModalSheet,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Top Active Campaigns Carousel
+                    _buildSectionHeader('الحملات الترويجية الكبرى ✦', onSeeAll: () {
+                      setState(() {
+                        _currentIndex = 1;
+                      });
+                    }),
+                    SizedBox(
+                      height: 140,
+                      child: feedProvider.isLoadingCampaigns
+                          ? const Center(child: CircularProgressIndicator(color: AppColors.copperOrange))
+                          : feedProvider.campaigns.isEmpty
+                              ? Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: AppColors.borderGrey),
+                                  ),
+                                  child: const Center(
+                                    child: Text('لا توجد حملات موسمية نشطة حالياً', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: feedProvider.campaigns.length,
+                                  itemBuilder: (ctx, idx) {
+                                    final campaign = feedProvider.campaigns[idx];
+                                    return GestureDetector(
+                                      onTap: () => _showCampaignCouponsModal(context, campaign),
+                                      child: Container(
+                                        width: 270,
+                                        margin: const EdgeInsets.only(left: 12),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [AppColors.copperOrange, AppColors.copperOrangeDark],
+                                            begin: Alignment.topRight,
+                                            end: Alignment.bottomLeft,
+                                          ),
+                                          borderRadius: BorderRadius.circular(18),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.copperOrange.withValues(alpha: 0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withValues(alpha: 0.2),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: const Row(
+                                                    children: [
+                                                      Icon(Icons.local_fire_department_rounded, color: Colors.amber, size: 13),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        'حملة نشطة',
+                                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                Text(
+                                                  campaign.discountBadge,
+                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11.5),
+                                                ),
+                                              ],
+                                            ),
+                                            Text(
+                                              campaign.title,
+                                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    campaign.storeName,
+                                                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: const Text(
+                                                    'العروض',
+                                                    style: TextStyle(color: AppColors.copperOrangeDark, fontSize: 11, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                     ),
                     const SizedBox(height: 16),
 
@@ -462,151 +602,182 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   }
 
   // ---------------------------------------------------------------------------
-  // TAB 1: OFFERS & DISCOUNTS VIEW (Matching Screenshot 5)
+  // TAB 1: CAMPAIGNS VIEW (الحملات الإعلانية والترويجية)
   // ---------------------------------------------------------------------------
-  Widget _buildOffersTab() {
+  Widget _buildCampaignsTab() {
     return Consumer<CustomerFeedProvider>(
       builder: (context, feedProvider, _) {
-        final offers = feedProvider.filteredOffers;
+        final campaigns = feedProvider.filteredCampaigns;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title Header
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'العروض والتخفيضات',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Search Bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: AppColors.borderGrey),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: Row(
+        return RefreshIndicator(
+          onRefresh: () async {
+            await feedProvider.fetchCampaigns();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.tune_rounded, color: AppColors.textMuted, size: 20),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'ابحث عن عرض...',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.copperOrange.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.campaign_rounded, color: AppColors.copperOrange, size: 24),
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'الحملات الإعلانية والترويجية',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
                           ),
-                          Icon(Icons.search_rounded, color: AppColors.copperOrange, size: 20),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'تصفح أحدث الحملات التسويقية والعروض الحصرية من شركائنا',
+                            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
 
-                  // Category Filter Pills
-                  SizedBox(
-                    height: 38,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: [
-                        _buildFilterPill('الكل', isSelected: true),
-                        const SizedBox(width: 8),
-                        _buildFilterPill('% تخفيضات'),
-                        const SizedBox(width: 8),
-                        _buildFilterPill('كوبونات'),
-                        const SizedBox(width: 8),
-                        _buildFilterPill('انخفاض سعر'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Grid/List Count Toggle Bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                    // Search Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(23),
+                          border: Border.all(color: AppColors.borderGrey),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: const Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.copperOrange,
-                                borderRadius: BorderRadius.circular(8),
+                            Icon(Icons.tune_rounded, color: AppColors.textMuted, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'ابحث عن حملة إعلانية أو متجر...',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                               ),
-                              child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 16),
                             ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.borderGrey),
-                              ),
-                              child: const Icon(Icons.view_list_rounded, color: AppColors.textMuted, size: 16),
-                            ),
+                            Icon(Icons.search_rounded, color: AppColors.copperOrange, size: 20),
                           ],
                         ),
-                        Text(
-                          '${offers.length} عرض متاح',
-                          style: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 10),
 
-                  // Offers Cards Grid
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: offers.isEmpty
-                        ? Container(
-                            padding: const EdgeInsets.all(32),
-                            alignment: Alignment.center,
-                            child: const Text('لا توجد عروض متاحة حالياً', style: TextStyle(color: AppColors.textMuted)),
-                          )
-                        : GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.82,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                            itemCount: offers.length,
-                            itemBuilder: (context, idx) {
-                              final offer = offers[idx];
-                              return _buildOfferGridCard(offer);
-                            },
+                    // Category Filter Pills
+                    SizedBox(
+                      height: 38,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: [
+                          _buildFilterPill('الكل', isSelected: true),
+                          const SizedBox(width: 8),
+                          _buildFilterPill('الحملات النشطة'),
+                          const SizedBox(width: 8),
+                          _buildFilterPill('خصومات خيالية'),
+                          const SizedBox(width: 8),
+                          _buildFilterPill('متاجر مميزة'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Campaign Count Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.copperOrange,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 16),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.borderGrey),
+                                ),
+                                child: const Icon(Icons.view_list_rounded, color: AppColors.textMuted, size: 16),
+                              ),
+                            ],
                           ),
-                  ),
-                ],
+                          Text(
+                            '${campaigns.length} حملة إعلانية نشطة',
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Campaigns List / Grid View
+                    feedProvider.isLoadingCampaigns
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(40),
+                              child: CircularProgressIndicator(color: AppColors.copperOrange),
+                            ),
+                          )
+                        : campaigns.isEmpty
+                            ? Container(
+                                padding: const EdgeInsets.all(32),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  'لا توجد حملات إعلانية متاحة حالياً',
+                                  style: TextStyle(color: AppColors.textMuted),
+                                ),
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: campaigns.length,
+                                  separatorBuilder: (ctx, i) => const SizedBox(height: 16),
+                                  itemBuilder: (context, idx) {
+                                    final campaign = campaigns[idx];
+                                    return _buildCampaignCard(context, campaign);
+                                  },
+                                ),
+                              ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -636,7 +807,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     );
   }
 
-  Widget _buildOfferGridCard(dynamic offer) {
+  Widget _buildCampaignCard(BuildContext context, CampaignModel campaign) {
+    final daysLeft = campaign.remainingTime.inDays;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.darkSlate,
@@ -649,89 +822,240 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
           ),
         ],
       ),
-      child: Stack(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
+          // Banner Color Header with Badges
+          Container(
+            height: 90,
+            width: double.infinity,
             padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.end,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(campaign.imageColor),
+                  AppColors.darkSlate,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Store Name Pill
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        campaign.storeName.isNotEmpty ? campaign.storeName[0] : 'S',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkSlate, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      campaign.storeName,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+
+                // Discount Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.copperOrange,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    offer.storeName,
-                    style: const TextStyle(color: Colors.white70, fontSize: 10),
+                    campaign.discountBadge,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12),
                   ),
                 ),
-                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+
+          // Content Details
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  offer.title,
+                  campaign.title,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 16,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
                 ),
-                const SizedBox(height: 6),
+                if (campaign.description.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    campaign.description,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.3),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 14),
+
+                // Expiry & Claim Action Button Bar
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    Row(
                       children: [
+                        const Icon(Icons.timer_outlined, color: AppColors.primaryAmber, size: 16),
+                        const SizedBox(width: 4),
                         Text(
-                          '${(offer.originalPrice * 1.5).toStringAsFixed(0)} د.ل',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            decoration: TextDecoration.lineThrough,
-                            fontSize: 11,
-                          ),
-                        ),
-                        Text(
-                          '${offer.finalPrice.toStringAsFixed(0)} د.ل',
-                          style: const TextStyle(
-                            color: Color(0xFFFF9E66),
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                          ),
+                          daysLeft > 0 ? 'ينتهي خلال $daysLeft أيام' : 'ينتهي اليوم',
+                          style: const TextStyle(color: AppColors.primaryAmber, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ],
+                    ),
+
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.copperOrange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => _showCampaignCouponsModal(context, campaign),
+                      icon: const Icon(
+                        Icons.local_offer_rounded,
+                        size: 16,
+                      ),
+                      label: const Text(
+                        'العروض',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          Positioned(
-            top: 10,
-            left: 10,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.bookmark_border_rounded, color: AppColors.darkSlate, size: 16),
-            ),
-          ),
         ],
       ),
+    );
+  }
+
+  void _showCampaignCouponsModal(BuildContext context, CampaignModel campaign) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Consumer<CustomerFeedProvider>(
+            builder: (context, feedProvider, _) {
+              final campaignOffers = feedProvider.offers
+                  .where((o) => o.category == campaign.category || o.storeName.toLowerCase() == campaign.storeName.toLowerCase())
+                  .toList();
+              final displayOffers = campaignOffers.isNotEmpty ? campaignOffers : feedProvider.offers;
+
+              return Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                decoration: const BoxDecoration(
+                  color: AppColors.darkSlate,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white30,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryAmber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.campaign_rounded, color: AppColors.primaryAmber, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                campaign.title,
+                                style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'عروض وأكواد خصم ${campaign.storeName}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24, color: Colors.white12),
+
+                    const Text(
+                      'الكوبونات والعروض المتاحة داخل هذه الحملة:',
+                      style: TextStyle(color: AppColors.primaryAmber, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Expanded(
+                      child: displayOffers.isEmpty
+                          ? const Center(
+                              child: Text('لا توجد عروض مخصصة لهذه الحملة حالياً', style: TextStyle(color: Colors.white60)),
+                            )
+                          : ListView.builder(
+                              itemCount: displayOffers.length,
+                              itemBuilder: (context, idx) {
+                                final offer = displayOffers[idx];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: OfferCard(
+                                    offer: offer,
+                                    onClaim: () {
+                                      _claimOffer(context, offer);
+                                      Navigator.pop(ctx);
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 

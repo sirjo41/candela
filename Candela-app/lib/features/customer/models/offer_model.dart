@@ -32,6 +32,26 @@ class OfferModel {
             ? title
             : (description.isNotEmpty ? description : storeName);
 
+  /// Helper to format discount badge into standardized Arabic ("وفر حتى 20%" or "وفر حتى 10 د.ل")
+  static String formatDiscountBadge(dynamic rawVal, {dynamic discountType, dynamic discountValue}) {
+    final str = rawVal?.toString().trim() ?? '';
+    if (str.startsWith('وفر حتى')) {
+      return str;
+    }
+
+    final isFixed = discountType == 'fixed' || str.contains('د.ل') || str.contains('D.L') || str.contains('EGP');
+    final numStr = discountValue?.toString() ?? str.replaceAll(RegExp(r'[^0-9.]'), '');
+    final doubleVal = double.tryParse(numStr);
+
+    if (isFixed) {
+      final val = doubleVal != null ? doubleVal.toStringAsFixed(0) : '10';
+      return 'وفر حتى $val د.ل';
+    } else {
+      final val = doubleVal != null ? doubleVal.toStringAsFixed(0) : '20';
+      return 'وفر حتى $val%';
+    }
+  }
+
   /// Calculates remaining time duration until expiry
   Duration get remainingTime {
     final diff = validUntil.difference(DateTime.now());
@@ -91,13 +111,20 @@ class OfferModel {
     double? origP = (json['original_price'] as num?)?.toDouble();
     double? discP = (json['discounted_price'] as num?)?.toDouble() ?? (json['final_price'] as num?)?.toDouble();
 
+    final rawBadge = json['discount_badge'] ?? json['discount'];
+    final badgeStr = formatDiscountBadge(
+      rawBadge,
+      discountType: json['discount_type'],
+      discountValue: json['discount_value'] ?? json['discount_rate'],
+    );
+
     return OfferModel(
       id: json['id']?.toString() ?? '',
       title: titleVal.toString(),
       storeName: storeNameVal.toString(),
       branchLocation: json['branch_location'] ?? json['location'] ?? 'Downtown Branch',
       category: json['category'] ?? 'Restaurants',
-      discountBadge: json['discount_badge'] ?? json['discount'] ?? 'عرض خاص',
+      discountBadge: badgeStr,
       originalPrice: origP,
       discountedPrice: discP,
       validUntil: json['valid_until'] != null
