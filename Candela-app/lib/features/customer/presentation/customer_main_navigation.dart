@@ -9,6 +9,7 @@ import 'widgets/hero_promo_banner.dart';
 import 'widgets/offer_card.dart';
 import 'widgets/qr_coupon_bottom_sheet.dart';
 import 'widgets/custom_bottom_nav_bar.dart';
+import '../../notifications/providers/notification_provider.dart';
 import '../models/campaign_model.dart';
 
 /// Main Customer Navigation Scaffold
@@ -90,6 +91,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.user;
+    final notifProvider = Provider.of<NotificationProvider>(context);
+
+    final incoming = notifProvider.latestIncomingNotification;
+    if (incoming != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifProvider.clearLatestIncoming();
+        _showIncomingNotificationDialog(context, incoming);
+      });
+    }
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -131,33 +141,57 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Bell Notification Icon Button
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary, size: 22),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('لا توجد إشعارات جديدة حالياً.'),
-                            duration: Duration(seconds: 2),
-                            behavior: SnackBarBehavior.floating,
+                  // Bell Notification Icon Button with Live Unread Badge
+                  Consumer<NotificationProvider>(
+                    builder: (context, notifProvider, _) {
+                      final unread = notifProvider.unreadCount;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                unread > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+                                color: unread > 0 ? AppColors.copperOrange : AppColors.textPrimary,
+                                size: 22,
+                              ),
+                              onPressed: () => _showNotificationsBottomSheet(context),
+                            ),
                           ),
-                        );
-                      },
-                    ),
+                          if (unread > 0)
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.errorRed,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                child: Text(
+                                  '$unread',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
 
                   // Brand Title: CANDELA ✦
@@ -338,7 +372,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     const SizedBox(height: 16),
 
                     // Top Active Campaigns Carousel
-                    _buildSectionHeader('الحملات الترويجية الكبرى ✦', onSeeAll: () {
+                    _buildSectionHeader('العروض الترويجية المميزة ✦', onSeeAll: () {
                       setState(() {
                         _currentIndex = 1;
                       });
@@ -640,7 +674,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               ),
                               const SizedBox(width: 10),
                               const Text(
-                                'الحملات الإعلانية والترويجية',
+                                'العروض الترويجية المميزة',
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900,
@@ -1699,6 +1733,183 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showNotificationsBottomSheet(BuildContext context) {
+    final provider = Provider.of<NotificationProvider>(context, listen: false);
+    provider.markAllAsRead();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Consumer<NotificationProvider>(
+          builder: (context, notifProvider, _) {
+            final items = notifProvider.notifications;
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.75,
+                decoration: const BoxDecoration(
+                  color: AppColors.scaffoldBackground,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.notifications_active_rounded, color: AppColors.copperOrange),
+                            SizedBox(width: 8),
+                            Text(
+                              'الإشعارات والإعلانات',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkSlate),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${items.length} إشعار',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Expanded(
+                      child: items.isEmpty
+                          ? const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.notifications_off_outlined, size: 50, color: Colors.black26),
+                                  SizedBox(height: 10),
+                                  Text('لا توجد إشعارات جديدة حالياً', style: TextStyle(color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: items.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final notif = items[index];
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.04),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              notif.title,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.darkSlate),
+                                            ),
+                                          ),
+                                          const Icon(Icons.campaign_rounded, color: AppColors.copperOrange, size: 20),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        notif.message,
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '${notif.createdAt.hour}:${notif.createdAt.minute.toString().padLeft(2, '0')}',
+                                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showIncomingNotificationDialog(BuildContext context, dynamic notif) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.copperOrange.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.campaign_rounded, color: AppColors.copperOrange, size: 24),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    notif.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.darkSlate),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              notif.message,
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.copperOrange,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('حسناً، فهمت', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

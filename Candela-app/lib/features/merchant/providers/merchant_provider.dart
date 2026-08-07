@@ -94,7 +94,7 @@ class MerchantProvider extends ChangeNotifier {
     if (isMockMode) return;
 
     try {
-      final response = await _apiClient.dio.get('/offers');
+      final response = await _apiClient.dio.get('/offers?include_inactive=1');
       if (response.statusCode == 200 && response.data != null) {
         final List raw = response.data is List ? response.data : (response.data['data'] ?? []);
         _merchantOffers = raw.map((e) => MerchantOfferItem.fromJson(e)).toList();
@@ -104,15 +104,33 @@ class MerchantProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Toggle status between 'active' and 'paused'
+  /// Toggle status between 'active' and 'paused' with API persistence
   Future<void> toggleOfferStatus(String offerId) async {
     final index = _merchantOffers.indexWhere((o) => o.id == offerId);
     if (index != -1) {
       final current = _merchantOffers[index];
       final newStatus = current.status == 'active' ? 'paused' : 'active';
+      final isActiveBool = newStatus == 'active';
+
+      // Optimistic UI update
       _merchantOffers[index] = current.copyWith(status: newStatus);
       _activeOffersCount = _merchantOffers.where((o) => o.status == 'active').length;
       notifyListeners();
+
+      // Persist to Laravel MySQL database
+      try {
+        await _apiClient.dio.post(
+          '/merchant/offers/$offerId/update',
+          data: {'is_active': isActiveBool ? 1 : 0},
+        );
+      } catch (_) {
+        try {
+          await _apiClient.dio.put(
+            '/merchant/offers/$offerId',
+            data: {'is_active': isActiveBool ? 1 : 0},
+          );
+        } catch (_) {}
+      }
     }
   }
 
@@ -283,7 +301,7 @@ class MerchantProvider extends ChangeNotifier {
     } catch (e) {
       return VerificationResult(
         isSuccess: false,
-        message: 'فشل الاتصال بخادم قنديل.',
+        message: 'فشل الاتصال بخادم واجهة.',
         errorCode: 'SERVER_ERROR',
       );
     }

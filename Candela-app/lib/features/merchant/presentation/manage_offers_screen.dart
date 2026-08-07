@@ -669,50 +669,6 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                 ),
                 const SizedBox(height: 12),
 
-                // Coupon Metrics Analytics Row (الكوبونات المحجوزة & الكوبونات المستعملة)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.darkSlate.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.borderGrey.withValues(alpha: 0.5)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.bookmark_added_rounded, color: AppColors.copperOrange, size: 16),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'المحجوزات: ',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          Text(
-                            '${offer.claimedCount}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.darkSlate),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.verified_rounded, color: AppColors.successGreen, size: 16),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'عدد الاستعمالات: ',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          Text(
-                            '${offer.redemptionsCount}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.successGreen),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-
                 // Active Status Badge Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -745,16 +701,21 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
                 ),
                 const SizedBox(height: 12),
 
-                // Real Usage Surface
+                // Black Space Container with Both Metrics (الكوبونات المحجوزة & عدد الاستعمالات)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: AppColors.darkSlate,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Center(
-                    child: _buildMetricTile('الكوبونات المحجوزة', '${offer.claimedCount}', Icons.confirmation_num_rounded, AppColors.primaryAmber),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildMetricTile('الكوبونات المحجوزة', '${offer.claimedCount}', Icons.confirmation_num_rounded, AppColors.primaryAmber),
+                      Container(width: 1, height: 28, color: Colors.white24),
+                      _buildMetricTile('عدد الاستعمالات', '${offer.redemptionsCount}', Icons.verified_rounded, AppColors.successGreen),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 10),

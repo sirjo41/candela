@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function () {
     Route::get('customer/campaigns', [CustomerController::class, 'campaigns']);
     Route::get('customer/coupons', [CustomerController::class, 'coupons']);
     Route::get('customer/stores', [CustomerController::class, 'stores']);
+    Route::get('notifications', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
 
     // 3. Authenticated Customer Endpoints
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {

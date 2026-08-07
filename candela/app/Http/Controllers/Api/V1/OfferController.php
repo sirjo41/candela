@@ -28,10 +28,13 @@ class OfferController extends Controller
         $radiusKm = $request->query('radius') ? (float) $request->query('radius') : 10.0;
 
         $query = Offer::with('store')
-            ->active()
             ->byCategory($category)
             ->minDiscount($minDiscount ? (float) $minDiscount : null)
             ->withinDistance($latitude, $longitude, $radiusKm);
+
+        if (! $request->boolean('include_inactive')) {
+            $query->where('is_active', true);
+        }
 
         $offers = $query->orderBy('created_at', 'desc')->get();
 
@@ -225,7 +228,7 @@ class OfferController extends Controller
             $offer->valid_until = $request->valid_until;
         }
         if ($request->has('is_active')) {
-            $offer->is_active = (bool) $request->is_active;
+            $offer->is_active = $request->boolean('is_active');
         }
 
         $offer->save();
@@ -236,6 +239,7 @@ class OfferController extends Controller
             if ($request->filled('title')) $coupon->title = $offer->title;
             if ($request->filled('valid_until')) $coupon->expires_at = $offer->valid_until;
             if ($request->filled('discount_value')) $coupon->discount_value = (float) $request->discount_value;
+            if ($request->has('is_active')) $coupon->is_active = $offer->is_active;
             $coupon->save();
         }
 

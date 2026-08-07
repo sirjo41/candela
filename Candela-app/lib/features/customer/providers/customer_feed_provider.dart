@@ -49,10 +49,11 @@ class CustomerFeedProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   List<OfferModel> get filteredOffers {
+    final activeOffers = _offers.where((o) => o.isActive).toList();
     if (_selectedCategory == 'الكل' || _selectedCategory == 'All') {
-      return _offers;
+      return activeOffers;
     }
-    return _offers.where((offer) =>
+    return activeOffers.where((offer) =>
         offer.category.toLowerCase() == _selectedCategory.toLowerCase() ||
         (_selectedCategory == 'المطاعم' && (offer.category == 'Restaurants' || offer.category == 'Cafes')) ||
         (_selectedCategory == 'الملابس' && offer.category == 'Shopping')).toList();

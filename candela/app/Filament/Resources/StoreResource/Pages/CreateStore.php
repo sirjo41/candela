@@ -13,7 +13,7 @@ class CreateStore extends CreateRecord
     protected function afterCreate(): void
     {
         /** @var array $data */
-        $data = $this->form->getRawState();
+        $data = $this->data ?? $this->form->getRawState();
         $store = $this->record;
 
         $option = $data['owner_option'] ?? 'none';

@@ -5,13 +5,16 @@ namespace App\Filament\Pages;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 
-class SendNotification extends Page
+class SendNotification extends Page implements HasForms
 {
+    use InteractsWithForms;
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-paper-airplane';
     protected static ?string $navigationLabel = 'إرسال الإشعارات والإعلانات';
     protected static ?string $title = 'إرسال الإشعارات والخصومات للعملاء';
@@ -26,10 +29,10 @@ class SendNotification extends Page
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 TextInput::make('title')
                     ->label('عنوان الإعلان / الإشعار')
                     ->required()
@@ -76,6 +79,12 @@ class SendNotification extends Page
             ->body('تم إطلاق الحملة الإعلانية لجميع المستهدفين.')
             ->success()
             ->send();
+
+        $this->dispatch('trigger-chrome-notification',
+            title: $data['title'],
+            body: $data['message'],
+            url: $data['action_url'] ?? null,
+        );
 
         $this->form->fill();
     }

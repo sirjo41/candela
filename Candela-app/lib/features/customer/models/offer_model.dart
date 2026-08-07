@@ -12,6 +12,7 @@ class OfferModel {
   final String? storeLogoUrl;
   final String? bannerImageUrl;
   final bool isClaimed;
+  final bool isActive;
   final String description;
 
   OfferModel({
@@ -27,6 +28,7 @@ class OfferModel {
     this.storeLogoUrl,
     this.bannerImageUrl,
     this.isClaimed = false,
+    this.isActive = true,
     this.description = '',
   }) : title = (title != null && title.isNotEmpty)
             ? title
@@ -133,6 +135,7 @@ class OfferModel {
       storeLogoUrl: json['store_logo_url'] ?? json['store_logo'],
       bannerImageUrl: json['banner_image_url'] ?? json['banner_image'],
       isClaimed: json['is_claimed'] ?? json['claimed'] ?? false,
+      isActive: json['is_active'] ?? true,
       description: descVal.toString(),
     );
   }

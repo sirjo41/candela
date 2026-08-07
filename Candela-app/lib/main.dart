@@ -9,6 +9,8 @@ import 'features/customer/providers/customer_feed_provider.dart';
 import 'features/merchant/presentation/merchant_main_navigation.dart';
 import 'features/merchant/providers/merchant_provider.dart';
 
+import 'features/notifications/providers/notification_provider.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const CandelaApp());
@@ -25,6 +27,7 @@ class CandelaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WalletProvider()),
         ChangeNotifierProvider(create: (_) => CustomerFeedProvider()),
         ChangeNotifierProvider(create: (_) => MerchantProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: MaterialApp(
         title: 'Candela',

@@ -50,6 +50,7 @@ class OfferResource extends JsonResource
             'valid_until' => $this->valid_until?->toIso8601String(),
             'remaining_seconds' => $remainingSeconds,
             'is_active' => (bool) $this->is_active,
+            'status' => $this->is_active ? 'active' : 'paused',
             'claimed' => $isClaimed,
             'is_claimed' => $isClaimed,
             'claimed_count' => $claimedCount,

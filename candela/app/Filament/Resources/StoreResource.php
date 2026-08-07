@@ -90,6 +90,7 @@ class StoreResource extends Resource
                             ])
                             ->default('none')
                             ->reactive()
+                            ->dehydrated(false)
                             ->columnSpanFull(),
 
                         Select::make('existing_owner_id')
@@ -99,28 +100,33 @@ class StoreResource extends Resource
                                 ->pluck('name', 'id'))
                             ->searchable()
                             ->visible(fn ($get) => $get('owner_option') === 'existing')
+                            ->dehydrated(false)
                             ->columnSpanFull(),
 
                         Group::make([
                             TextInput::make('new_owner_name')
                                 ->label('Merchant Name / اسم التاجر')
                                 ->required(fn ($get) => $get('owner_option') === 'new')
+                                ->dehydrated(false)
                                 ->maxLength(255),
 
                             TextInput::make('new_owner_email')
                                 ->label('Merchant Email / البريد الإلكتروني')
                                 ->email()
                                 ->required(fn ($get) => $get('owner_option') === 'new')
+                                ->dehydrated(false)
                                 ->maxLength(255),
 
                             TextInput::make('new_owner_phone')
                                 ->label('Merchant Phone / رقم الهاتف')
+                                ->dehydrated(false)
                                 ->tel(),
 
                             TextInput::make('new_owner_password')
                                 ->label('Merchant Password / كلمة المرور')
                                 ->password()
                                 ->required(fn ($get) => $get('owner_option') === 'new')
+                                ->dehydrated(false)
                                 ->minLength(6),
                         ])
                         ->columns(2)

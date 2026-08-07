@@ -147,7 +147,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                           children: [
                             const Text('العميل:', style: TextStyle(color: Colors.white70, fontSize: 13)),
                             Text(
-                              result.redemptionData!['customer_name'] ?? result.redemptionData!['customer_user']?['name'] ?? 'عميل قنديل',
+                              result.redemptionData!['customer_name'] ?? result.redemptionData!['customer_user']?['name'] ?? 'عميل واجهة',
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                           ],
