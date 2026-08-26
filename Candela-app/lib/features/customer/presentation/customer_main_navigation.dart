@@ -25,6 +25,18 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   int _currentIndex = 0;
   int _walletSubTab = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<WalletProvider>(context, listen: false).fetchWallet();
+      final feedProvider = Provider.of<CustomerFeedProvider>(context, listen: false);
+      feedProvider.fetchFeedData();
+      feedProvider.fetchCampaigns();
+      feedProvider.fetchStores();
+    });
+  }
+
   void _claimOffer(BuildContext context, offer) async {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
     final feedProvider =
@@ -1463,159 +1475,165 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   // TAB 3: WALLET VIEW (المحفظة - Active, Used, Expired Coupons)
   // ---------------------------------------------------------------------------
   Widget _buildWalletTab() {
-    return Consumer<CustomerFeedProvider>(
-      builder: (context, feedProvider, _) {
+    return Consumer<WalletProvider>(
+      builder: (context, walletProvider, _) {
         List<dynamic> currentList = [];
         if (_walletSubTab == 0) {
-          currentList = feedProvider.activeCoupons;
+          currentList = walletProvider.activeCoupons;
         } else if (_walletSubTab == 1) {
-          currentList = feedProvider.usedCoupons;
+          currentList = walletProvider.usedCoupons;
         } else {
-          currentList = feedProvider.expiredCoupons;
+          currentList = walletProvider.expiredCoupons;
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 28, top: 8),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title Header
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.copperOrange.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${currentList.length} كوبون',
-                            style: const TextStyle(
-                                color: AppColors.copperOrange,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12),
-                          ),
-                        ),
-                        const Text(
-                          'محفظة الكوبونات',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Sub-Tab Switcher Pills
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderGrey),
-                      ),
+        return RefreshIndicator(
+          onRefresh: () async {
+            await walletProvider.fetchWallet();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 28, top: 8),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title Header
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _walletSubTab = 0),
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: _walletSubTab == 0
-                                      ? AppColors.copperOrange
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'النشطة (${feedProvider.activeCoupons.length})',
-                                  style: TextStyle(
-                                    color: _walletSubTab == 0
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color:
+                                  AppColors.copperOrange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${currentList.length} كوبون',
+                              style: const TextStyle(
+                                  color: AppColors.copperOrange,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12),
                             ),
                           ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _walletSubTab = 1),
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: _walletSubTab == 1
-                                      ? AppColors.copperOrange
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'المستعملة (${feedProvider.usedCoupons.length})',
-                                  style: TextStyle(
-                                    color: _walletSubTab == 1
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _walletSubTab = 2),
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: _walletSubTab == 2
-                                      ? AppColors.copperOrange
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'المنتهية (${feedProvider.expiredCoupons.length})',
-                                  style: TextStyle(
-                                    color: _walletSubTab == 2
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
+                          const Text(
+                            'محفظة الكوبونات',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                  // Coupons List Body
-                  feedProvider.isLoadingWallet
+                    // Sub-Tab Switcher Pills
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.borderGrey),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _walletSubTab = 0),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _walletSubTab == 0
+                                        ? AppColors.copperOrange
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'النشطة (${walletProvider.activeCoupons.length})',
+                                    style: TextStyle(
+                                      color: _walletSubTab == 0
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _walletSubTab = 1),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _walletSubTab == 1
+                                        ? AppColors.copperOrange
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'المستعملة (${walletProvider.usedCoupons.length})',
+                                    style: TextStyle(
+                                      color: _walletSubTab == 1
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _walletSubTab = 2),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _walletSubTab == 2
+                                        ? AppColors.copperOrange
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'المنتهية (${walletProvider.expiredCoupons.length})',
+                                    style: TextStyle(
+                                      color: _walletSubTab == 2
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Coupons List Body
+                    walletProvider.isLoading
+
                       ? const Center(
                           child: Padding(
                             padding: EdgeInsets.all(40),
@@ -1797,10 +1815,13 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
+
 
   // ---------------------------------------------------------------------------
   // TAB 4: POINTS & REWARDS CENTER / PROFILE VIEW (Matching Screenshot 3)

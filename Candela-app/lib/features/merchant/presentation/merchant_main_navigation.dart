@@ -21,6 +21,16 @@ class MerchantMainNavigation extends StatefulWidget {
 class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final merchantProvider = Provider.of<MerchantProvider>(context, listen: false);
+      merchantProvider.fetchDashboardMetrics();
+      merchantProvider.fetchMerchantOffers();
+    });
+  }
+
   void _navigateToTab(int index) {
     setState(() {
       _currentIndex = index;

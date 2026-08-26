@@ -81,7 +81,7 @@ class MerchantProvider extends ChangeNotifier {
           _walletBalance = (data['store']['balance'] as num).toDouble();
         }
         _activeOffersCount = data['active_coupons_count'] ?? data['active_offers_count'] ?? _activeOffersCount;
-        _totalRedemptions = data['todays_redemptions'] ?? data['total_redemptions'] ?? _totalRedemptions;
+        _totalRedemptions = ((data['total_redemptions'] ?? data['dashboard']?['total_redemptions'] ?? data['todays_redemptions'] ?? _totalRedemptions) as num).toInt();
       }
     } catch (_) {}
 
