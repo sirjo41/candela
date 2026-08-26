@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\ClaimedCoupon;
 use App\Models\Coupon;
+use App\Models\Offer;
 use App\Models\Store;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -136,7 +138,10 @@ class CustomerController extends Controller
      */
     public function rewards(Request $request): JsonResponse
     {
-        $user = $request->user('sanctum') ?? $request->user() ?? User::where('role', 'customer')->first() ?? User::first();
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
         $points = (int) ($user ? ($user->loyalty_points ?? 250) : 250);
         $tier = $points >= 500 ? 'المستوى الذهبي' : 'المستوى الفضي';
         $pointsNeeded = $points >= 500 ? 0 : (500 - $points);
@@ -196,7 +201,10 @@ class CustomerController extends Controller
      */
     public function wallet(Request $request): JsonResponse
     {
-        $user = $request->user('sanctum') ?? $request->user() ?? \App\Models\User::where('role', 'customer')->first() ?? \App\Models\User::first();
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
         $now = now();
 
         $claimedCoupons = ClaimedCoupon::query()
@@ -386,7 +394,10 @@ class CustomerController extends Controller
      */
     public function claim(Request $request, int $id): JsonResponse
     {
-        $user = $request->user('sanctum') ?? $request->user() ?? \App\Models\User::where('role', 'customer')->first() ?? \App\Models\User::first();
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         // Locate Coupon by ID, offer_id, or campaign_id
         $coupon = Coupon::with('store')->find($id);

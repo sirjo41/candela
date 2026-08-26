@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\QrVerificationController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\MerchantController;
 use App\Http\Controllers\Api\V1\QrController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,22 +16,20 @@ use Illuminate\Support\Facades\Route;
 */
 Route::prefix('v1')->group(function () {
 
-    // 1. Dynamic Authentication System (Laravel Sanctum)
+    // 1. Authentication (public)
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'registerCustomer']);
         Route::post('login', [AuthController::class, 'login']);
-        Route::post('customer/register', [AuthController::class, 'registerCustomer']);
-        Route::post('customer/login', [AuthController::class, 'login']);
         Route::post('merchant/login', [AuthController::class, 'loginMerchant']);
     });
 
-    // 2. Offers & Campaigns Engine (Public Feed Discovery)
+    // 2. Public Feed Discovery
     Route::get('offers', [OfferController::class, 'index']);
     Route::get('offers/{id}', [OfferController::class, 'show']);
     Route::get('customer/campaigns', [CustomerController::class, 'campaigns']);
     Route::get('customer/coupons', [CustomerController::class, 'coupons']);
     Route::get('customer/stores', [CustomerController::class, 'stores']);
-    Route::get('notifications', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
+    Route::get('notifications', [NotificationController::class, 'index']);
 
     // 3. Authenticated Customer Endpoints
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
@@ -44,7 +43,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // 4. Authenticated Merchant & Staff Operations
-    Route::prefix('merchant')->group(function () {
+    Route::middleware(['auth:sanctum', 'role:merchant'])->prefix('merchant')->group(function () {
         Route::post('offers/create', [OfferController::class, 'create']);
         Route::post('offers/{id}/update', [OfferController::class, 'update']);
         Route::put('offers/{id}', [OfferController::class, 'update']);
@@ -55,8 +54,7 @@ Route::prefix('v1')->group(function () {
         Route::get('history', [MerchantController::class, 'history']);
     });
 
-    // 5. Dynamic QR Scanner Utilities
-    Route::post('qr/verify', [QrVerificationController::class, 'verifyQr']);
+    // 5. Authenticated QR Operations
     Route::middleware('auth:sanctum')->prefix('qr')->group(function () {
         Route::post('generate', [QrController::class, 'generate']);
         Route::post('validate', [QrController::class, 'validateQr']);

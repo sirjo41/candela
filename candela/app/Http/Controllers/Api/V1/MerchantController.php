@@ -16,14 +16,18 @@ class MerchantController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
-        $merchant = $request->user('sanctum') ?? $request->user() ?? \App\Models\User::where('role', 'merchant')->first() ?? \App\Models\User::first();
-        $store = $merchant?->store ?? \App\Models\Store::find($merchant?->store_id) ?? \App\Models\Store::first();
+        $merchant = $request->user();
+        if (! $merchant) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $store = $merchant->store ?? \App\Models\Store::find($merchant->store_id);
 
         if (! $store) {
-            $store = \App\Models\Store::firstOrCreate(
-                ['name' => 'Candela Store Flagship'],
-                ['balance' => 500.00, 'creation_fee_rate' => 50.00, 'redemption_fee_rate' => 5.00, 'is_active' => true]
-            );
+            return response()->json([
+                'message' => 'No store found for this merchant account.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
         }
 
         $storeId = $store->id;

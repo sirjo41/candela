@@ -7,13 +7,13 @@ use App\Http\Requests\Api\V1\Qr\VerifyQrRequest;
 use App\Http\Resources\Api\V1\RedemptionResource;
 use App\Models\ClaimedCoupon;
 use App\Models\Coupon;
-use App\Models\Offer;
 use App\Models\Redemption;
 use App\Models\Store;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+
 
 class QrVerificationController extends Controller
 {
@@ -23,14 +23,24 @@ class QrVerificationController extends Controller
      */
     public function verifyQr(VerifyQrRequest $request): JsonResponse
     {
-        $staffUser = $request->user('sanctum') ?? $request->user() ?? User::where('role', 'merchant')->first() ?? User::first();
-        $store = $staffUser?->store ?? Store::find($staffUser?->store_id) ?? Store::first();
+        $staffUser = $request->user();
+
+        if (! $staffUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required.',
+                'error_code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        $store = $staffUser->store ?? Store::find($staffUser->store_id);
 
         if (! $store) {
-            $store = Store::firstOrCreate(
-                ['name' => 'Candela Store Flagship'],
-                ['creation_fee_rate' => 50.00, 'redemption_fee_rate' => 5.00, 'is_active' => true]
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'No store found for this merchant account.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
         }
 
         $qrTokenInput = trim($request->qr_token ?? $request->coupon_code ?? $request->qr_code_hash ?? '');
@@ -82,31 +92,13 @@ class QrVerificationController extends Controller
             $targetUserId = User::where('role', 'customer')->value('id') ?? ($staffUser ? $staffUser->id : 1);
         }
 
-        // 2. If not found, check Offer or create coupon for verification
+        // 2. If coupon not found, return 404
         if (! $coupon) {
-            $offer = Offer::where('id', is_numeric($parsedCode) ? (int) $parsedCode : 0)->first();
-
-            $coupon = Coupon::create([
-                'store_id' => $store->id,
-                'offer_id' => $offer ? $offer->id : null,
-                'user_id' => $targetUserId,
-                'title' => $offer ? $offer->title : 'Special Promotional Pass',
-                'code' => $parsedCode,
-                'qr_token' => $qrTokenInput,
-                'discount_type' => 'percentage',
-                'discount_value' => $offer ? $offer->discount_rate : 20,
-                'redemption_fee' => $offer ? $offer->redemption_fee : 5.00,
-                'expires_at' => now()->addDays(30),
-                'is_active' => true,
-                'status' => 'claimed',
-            ]);
-            $coupon->load(['offer', 'user']);
-        }
-
-        // Ensure coupon has valid user_id
-        if (! $coupon->user_id) {
-            $coupon->user_id = $targetUserId;
-            $coupon->save();
+            return response()->json([
+                'success' => false,
+                'message' => 'QR code or coupon not found in the system.',
+                'error_code' => 'COUPON_NOT_FOUND',
+            ], 404);
         }
 
         // 3. Validate Single-Use / Already Redeemed status -> HTTP 400 Bad Request
@@ -135,12 +127,6 @@ class QrVerificationController extends Controller
             $redemption = DB::transaction(function () use ($coupon, $store, $staffUser, $targetUserId, $redemptionFee, $qrTokenInput) {
                 // Fetch & lock merchant wallet
                 $wallet = $store->getOrCreateWallet();
-
-                // Top up wallet balance if insufficient to ensure smooth redemption
-                if ((float) $wallet->balance < $redemptionFee) {
-                    $wallet->balance = 500.00;
-                    $wallet->save();
-                }
 
                 // Deduct redemption fee from merchant wallet
                 $wallet->deduct(
