@@ -3,21 +3,30 @@ import 'package:dio/dio.dart';
 import '../storage/auth_storage.dart';
 
 class ApiClient {
+  // Production VPS Server Configuration
+  static const String _productionIp = '46.225.118.110';
+  static const String _apiPrefix = '/api/v1';
+
   static String get baseUrl {
+    // 1. Web / PWA Runtime Base URL Detection
     if (kIsWeb) {
       final host = Uri.base.host;
+      // If deployed on web / domain, adapt to current host without port 8000
       if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
-        return 'http://$host:8000/api/v1';
+        return '${Uri.base.scheme}://$host$_apiPrefix';
       }
-      return 'http://127.0.0.1:8000/api/v1';
+      // If developing locally on Web, connect directly to Hetzner VPS
+      return 'http://$_productionIp$_apiPrefix';
     }
 
-    // Default to localhost for desktop/local dev
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000/api/v1';
+    // 2. Android Emulator Local Fallback (if running local backend)
+    if (defaultTargetPlatform == TargetPlatform.android && kDebugMode) {
+      // Switch to 'http://$_productionIp$_apiPrefix' for live server testing on physical devices
+      return 'http://$_productionIp$_apiPrefix';
     }
 
-    return 'http://127.0.0.1:8000/api/v1';
+    // 3. Default Production VPS Endpoint
+    return 'http://$_productionIp$_apiPrefix';
   }
 
   final Dio dio;
@@ -44,6 +53,10 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) {
+          // Handle 401 Unauthorized globally if token expires
+          if (error.response?.statusCode == 401) {
+            AuthStorage.clearToken();
+          }
           return handler.next(error);
         },
       ),

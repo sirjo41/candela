@@ -35,6 +35,15 @@ class AuthStorage {
     return prefs.getBool(_keyRememberMe) ?? true;
   }
 
+  static Future<void> clearToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyToken);
+  }
+
+  static Future<void> removeToken() async {
+    await clearToken();
+  }
+
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyToken);
