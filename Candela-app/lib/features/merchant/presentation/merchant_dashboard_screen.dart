@@ -417,13 +417,52 @@ class MerchantDashboardScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Card 2: Total Redemptions
+                            // Card 2: Launch New Offer Quick Action Card (replaces Total Redemptions)
                             Expanded(
-                              child: _buildMetricCard(
-                                title: 'إجمالي العمليات',
-                                value: '${merchant.totalRedemptions}',
-                                icon: Icons.qr_code_scanner_rounded,
-                                color: AppColors.successGreen,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: onLaunchOffer,
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryAmber.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: AppColors.primaryAmber),
+                                    ),
+                                    child: const Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.add_circle_rounded, color: AppColors.copperOrange, size: 20),
+                                        SizedBox(height: 6),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerRight,
+                                          child: Text(
+                                            'إطلاق عرض',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.copperOrangeDark,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'إطلاق عرض جديد',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: AppColors.darkSlate,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -440,63 +479,6 @@ class MerchantDashboardScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
 
-                        // Launch New Offer Quick Banner Callout
-                        Container(
-                          padding: EdgeInsets.all(isMobile ? 14 : 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryAmber.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.primaryAmber.withValues(alpha: 0.4)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryAmber,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.add_circle_rounded, color: AppColors.darkBackground, size: 22),
-                              ),
-                              const SizedBox(width: 10),
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'إطلاق عرض جديد للعملاء',
-                                      style: TextStyle(
-                                        color: AppColors.darkSlate,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14.5,
-                                      ),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      'قم بإنشاء خصم ترويجي ونشره فوراً للعملاء.',
-                                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryAmber,
-                                  foregroundColor: AppColors.darkSlate,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 14, vertical: 10),
-                                ),
-                                onPressed: onLaunchOffer,
-                                child: const Text(
-                                  'إطلاق الآن',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
 
                         // 3. Quick Actions Menu Header
                         const Text(

@@ -17,14 +17,41 @@ class OfferResource extends JsonResource
 
         if ($user) {
             $isClaimed = ClaimedCoupon::where('user_id', $user->id)
-                ->whereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))
+                ->where(function ($q) {
+                    $q->whereHas('coupon', fn ($cq) => $cq->where('offer_id', $this->id));
+                    $q->orWhere('coupon_id', $this->id);
+                })
                 ->exists();
         }
 
-        $claimedCount = ClaimedCoupon::whereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))->count();
-        $redemptionsCount = ClaimedCoupon::where('status', 'redeemed')
-            ->whereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))
+        $redemptionsTableCount = \App\Models\Redemption::where('offer_id', $this->id)
+            ->orWhereHas('coupon', fn ($q) => $q->where('offer_id', $this->id))
             ->count();
+
+        $couponUsesSum = (int) \App\Models\Coupon::where('offer_id', $this->id)->sum('uses_count');
+
+        $claimedRedeemedCount = ClaimedCoupon::whereIn('status', ['redeemed', 'used'])
+            ->where(function ($q) {
+                $q->whereHas('coupon', fn ($cq) => $cq->where('offer_id', $this->id));
+                $q->orWhere('coupon_id', $this->id);
+            })
+            ->count();
+
+        $couponRedeemedCount = \App\Models\Coupon::where('offer_id', $this->id)
+            ->whereIn('status', ['redeemed', 'used'])
+            ->count();
+
+        $redemptionsCount = max($redemptionsTableCount, $couponUsesSum, $claimedRedeemedCount, $couponRedeemedCount);
+
+        $claimedCountTable = ClaimedCoupon::where(function ($q) {
+            $q->whereHas('coupon', fn ($cq) => $cq->where('offer_id', $this->id));
+            $q->orWhere('coupon_id', $this->id);
+        })->count();
+
+        $couponCount = \App\Models\Coupon::where('offer_id', $this->id)->count();
+
+        $claimedCount = max($claimedCountTable, $couponCount, $redemptionsCount);
+
 
         return [
             'id' => $this->id,

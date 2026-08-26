@@ -41,7 +41,15 @@ class MerchantProvider extends ChangeNotifier {
   String get storeName => _storeName;
   double get walletBalance => _walletBalance;
   int get activeOffersCount => _activeOffersCount;
-  int get totalRedemptions => _totalRedemptions;
+  int get totalRedemptions {
+    if (_totalRedemptions > 0) return _totalRedemptions;
+    if (_merchantOffers.isNotEmpty) {
+      final sumFromOffers = _merchantOffers.fold(0, (sum, item) => sum + item.redemptionsCount);
+      if (sumFromOffers > 0) return sumFromOffers;
+    }
+    return _totalRedemptions;
+  }
+
   List<dynamic> get recentRedemptions => _recentRedemptions;
   List<MerchantOfferItem> get merchantOffers => _merchantOffers;
 
