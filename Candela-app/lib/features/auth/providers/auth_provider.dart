@@ -232,4 +232,101 @@ class AuthProvider extends ChangeNotifier {
     _isMerchantAccount = false;
     notifyListeners();
   }
+
+  /// Update personal profile details
+  Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String email,
+    String? phone,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      Response? res;
+      try {
+        res = await _apiClient.dio.post('/profile/update', data: {
+          'name': name.trim(),
+          'email': email.trim(),
+          'phone': phone?.trim(),
+        });
+      } catch (_) {
+        res = await _apiClient.dio.post('/customer/profile/update', data: {
+          'name': name.trim(),
+          'email': email.trim(),
+          'phone': phone?.trim(),
+        });
+      }
+
+      if (res.statusCode == 200 && res.data != null) {
+        final userData = res.data['user'] ?? res.data['data'];
+        if (userData != null) {
+          _user = UserModel.fromJson(Map<String, dynamic>.from(userData));
+          await AuthStorage.saveUserData(jsonEncode(_user!.toJson()));
+        }
+        _isLoading = false;
+        notifyListeners();
+        return {'success': true, 'message': res.data['message'] ?? 'تم تحديث البيانات بنجاح.'};
+      }
+    } on DioException catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      final msg = e.response?.data?['message'] ?? 'فشل تحديث البيانات. يرجى التأكد من صحة المدخلات.';
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'message': 'حدث خطأ: ${e.toString()}'};
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return {'success': false, 'message': 'فشل تحديث البيانات.'};
+  }
+
+  /// Securely change password
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      Response? res;
+      final payload = {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+        'new_password_confirmation': confirmPassword,
+      };
+
+      try {
+        res = await _apiClient.dio.post('/profile/change-password', data: payload);
+      } catch (_) {
+        res = await _apiClient.dio.post('/customer/profile/change-password', data: payload);
+      }
+
+      if (res.statusCode == 200 && res.data != null) {
+        _isLoading = false;
+        notifyListeners();
+        return {'success': true, 'message': res.data['message'] ?? 'تم تغيير كلمة المرور بنجاح.'};
+      }
+    } on DioException catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      final msg = e.response?.data?['message'] ?? 'فشل تغيير كلمة المرور. تأكد من صحة كلمة المرور الحالية.';
+      return {'success': false, 'message': msg};
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'message': 'حدث خطأ: ${e.toString()}'};
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return {'success': false, 'message': 'فشل تغيير كلمة المرور.'};
+  }
 }

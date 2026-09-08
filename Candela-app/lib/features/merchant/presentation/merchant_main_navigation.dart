@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../customer/presentation/widgets/edit_profile_dialog.dart';
+import '../../customer/presentation/widgets/change_password_dialog.dart';
 import '../providers/merchant_provider.dart';
 import 'merchant_dashboard_screen.dart';
 import 'manage_offers_screen.dart';
 import 'launch_offer_screen.dart';
 import 'qr_scanner_screen.dart';
+import 'merchant_history_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 
 /// Main Navigation Scaffold for Merchant / Store Owner App
@@ -149,8 +155,8 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
             // 2. QR Verification Scanner (IMG-20260725-WA0015.jpg)
             const QrScannerScreen(),
 
-            // 3. Wallet & Financial History
-            _buildWalletTab(),
+            // 3. Read-Only Redemption History Ledger Dashboard
+            const MerchantHistoryScreen(),
 
             // 4. Settings & Store Profile
             _buildStoreProfileTab(user, auth),
@@ -190,8 +196,8 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
                 label: 'مسح الكود',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.account_balance_wallet_rounded),
-                label: 'المحفظة',
+                icon: Icon(Icons.receipt_long_rounded),
+                label: 'سجل الاسترداد',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.settings_rounded),
@@ -204,72 +210,12 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
     );
   }
 
-  Widget _buildWalletTab() {
-    return Consumer<MerchantProvider>(
-      builder: (context, merchant, _) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'محفظة التاجر والرصيد المنصرف',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.darkSlate),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Wallet Card Surface
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.darkSlate, AppColors.darkBackground],
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('الرصيد المتاح حالياً', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${merchant.walletBalance.toStringAsFixed(2)} د.ل',
-                          style: const TextStyle(color: AppColors.primaryAmber, fontWeight: FontWeight.w900, fontSize: 28),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryAmber,
-                            foregroundColor: AppColors.darkSlate,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('شحن المحفظة متاح عبر خدمات البنك الإلكتروني.')),
-                            );
-                          },
-                          icon: const Icon(Icons.add_card_rounded, size: 18),
-                          label: const Text('شحن المحفظة الآن', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildStoreProfileTab(dynamic user, AuthProvider auth) {
+    final theme = Provider.of<ThemeProvider>(context);
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    final loc = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Center(
@@ -280,27 +226,132 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
               const SizedBox(height: 10),
               CircleAvatar(
                 radius: 40,
-                backgroundColor: AppColors.primaryAmber,
+                backgroundColor: AppColors.darkAmberAccent,
                 child: Text(
                   user?.name != null && user!.name.isNotEmpty ? user.name.substring(0, 1).toUpperCase() : 'M',
-                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.darkBackground),
+                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.darkSlateSurface),
                 ),
               ),
               const SizedBox(height: 14),
               Text(
                 user?.name ?? 'متجر واجهة الشريك',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkSlate),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 4),
-              Text(user?.email ?? user?.phone ?? 'merchant@candela.app', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+              Text(
+                user?.email ?? user?.phone ?? 'merchant@candela.app',
+                style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 14),
+              ),
               const SizedBox(height: 24),
 
+              // Profile & Security Actions
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSlateCard : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.edit_note_rounded, color: AppColors.darkAmberAccent),
+                      title: Text(
+                        loc.tr('edit_profile'),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                      onTap: () => EditProfileDialog.show(context),
+                    ),
+                    const Divider(height: 1, color: AppColors.borderGrey),
+                    ListTile(
+                      leading: const Icon(Icons.lock_reset_rounded, color: AppColors.darkAmberAccent),
+                      title: Text(
+                        loc.tr('change_password'),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                      onTap: () => ChangePasswordDialog.show(context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Preferences: Dark Mode & Language
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSlateCard : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      secondary: const Icon(Icons.dark_mode_rounded, color: AppColors.darkAmberAccent),
+                      title: Text(
+                        loc.tr('dark_mode'),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      value: theme.isDarkMode,
+                      activeThumbColor: AppColors.darkAmberAccent,
+                      onChanged: (val) => theme.toggleTheme(),
+                    ),
+                    const Divider(height: 1, color: AppColors.borderGrey),
+                    ListTile(
+                      leading: const Icon(Icons.translate_rounded, color: AppColors.darkAmberAccent),
+                      title: Text(
+                        loc.tr('language'),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.darkAmberAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.darkAmberAccent),
+                        ),
+                        child: Text(
+                          localeProvider.isArabic ? 'English' : 'العربية',
+                          style: const TextStyle(color: AppColors.darkAmberAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      onTap: () => localeProvider.toggleLocale(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Role Switching Button
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
-                  backgroundColor: AppColors.darkSlate,
+                  backgroundColor: AppColors.darkSlateSurface,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: isDark ? AppColors.darkSlateBorder : Colors.transparent),
+                  ),
                 ),
                 icon: const Icon(Icons.swap_horiz_rounded),
                 label: const Text('التبديل إلى واجهة العملاء'),

@@ -2,26 +2,35 @@ import 'package:flutter/material.dart';
 
 /// App Color System for Candela Mobile App
 /// Strictly adheres to brand & UI specs:
-/// - Primary Brand Accent: Amber Flame #F59E0B / #D97706
-/// - Dark Surface Accent: Charcoal Slate #1E293B / #0F172A
-/// - Background Canvas: Warm Cream/Off-White #FAF8F5
+/// - Dark Mode Tokens: #0F172A dark slate surfaces, #1E293B dark cards, #F59E0B amber accents
+/// - Primary Brand Accent: Amber Flame #F59E0B / #D97706 / Copper #D8580E
+/// - Background Canvas: Warm Cream/Off-White #FAF8F5 (Light Mode)
 /// - Status Accents: Success Green #10B981
 class AppColors {
-  // Primary Brand & Copper Terracotta Accents (from Customer Screenshots)
-  static const Color primaryAmber = Color(0xFFD8580E);
-  static const Color primaryAmberDark = Color(0xFFC84605);
-  static const Color primaryAmberLight = Color(0xFFFCE8DB);
+  // Primary Brand & Amber Accents
+  static const Color primaryAmber = Color(0xFFF59E0B);
+  static const Color primaryAmberDark = Color(0xFFD97706);
+  static const Color primaryAmberLight = Color(0xFFFEF3C7);
   static const Color copperOrange = Color(0xFFD8580E);
   static const Color copperOrangeDark = Color(0xFFB03800);
 
-  // Background Canvas (Warm Cream / Off-White from Screenshots)
+  // Light Mode Canvas & Surfaces
   static const Color scaffoldBackground = Color(0xFFFAF7F2);
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color cardSurface = Color(0xFFFFFFFF);
 
-  // Dark Surface Accents
-  static const Color darkSlate = Color(0xFF1C1A17);
-  static const Color darkBackground = Color(0xFF141210);
+  // Dark Mode Tokens (Production-Grade Specs)
+  static const Color darkSlateSurface = Color(0xFF0F172A); // #0F172A dark slate surfaces
+  static const Color darkSlateCard = Color(0xFF1E293B);    // #1E293B dark card background
+  static const Color darkSlateBorder = Color(0xFF334155);  // #334155 border
+  static const Color darkAmberAccent = Color(0xFFF59E0B);  // #F59E0B amber accents
+  static const Color darkTextPrimary = Color(0xFFF8FAFC);  // Slate 50 high contrast text
+  static const Color darkTextSecondary = Color(0xFF94A3B8);// Slate 400 secondary text
+  static const Color darkInputBg = Color(0xFF1E293B);
+
+  // Dark Surface Accents (Shared)
+  static const Color darkSlate = Color(0xFF0F172A);
+  static const Color darkBackground = Color(0xFF0A0F1D);
   static const Color royalNavy = Color(0xFF1E3A8A);
 
   // Pastel Category Background Tints (from Screenshots)
@@ -40,7 +49,7 @@ class AppColors {
   static const Color errorRed = Color(0xFFEF4444);
   static const Color warningOrange = Color(0xFFF97316);
 
-  // Text Colors
+  // Text Colors (Light Mode)
   static const Color textPrimary = Color(0xFF2C241E);
   static const Color textSecondary = Color(0xFF7A7067);
   static const Color textMuted = Color(0xFFA89F95);

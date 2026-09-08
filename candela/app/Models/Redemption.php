@@ -31,6 +31,13 @@ class Redemption extends Model
         'redeemed_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function ($model) {
+            throw new \RuntimeException('Redemption audit records are immutable and cannot be deleted.');
+        });
+    }
+
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);

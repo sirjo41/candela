@@ -127,7 +127,8 @@ class MerchantController extends Controller
     }
 
     /**
-     * List redemption audit logs for the authenticated merchant's store.
+    /**
+     * List read-only redemption audit ledger for the authenticated merchant's store branches.
      */
     public function history(Request $request): JsonResponse
     {
@@ -135,24 +136,72 @@ class MerchantController extends Controller
 
         if (! $merchant) {
             return response()->json([
+                'success' => false,
                 'message' => 'Unauthorized',
-            ], 403);
+            ], 401);
         }
 
         $storeId = $merchant->store_id ?? $merchant->store?->id ?? 1;
 
-        $redemptions = Redemption::query()
-            ->with(['coupon:id,title,code,discount_type,discount_value', 'user:id,name,email,phone'])
+        $query = Redemption::query()
+            ->with([
+                'coupon:id,title,code,discount_type,discount_value',
+                'user:id,name,email,phone',
+                'branch:id,name,address',
+                'staffUser:id,name',
+            ])
             ->where(function ($q) use ($storeId) {
-                $q->where('store_id', $storeId)
-                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId))
-                  ->orWhereHas('branch', fn ($bq) => $bq->where('store_id', $storeId));
-            })
-            ->latest('redeemed_at')
-            ->get();
+                $q->whereHas('branch', fn ($bq) => $bq->where('store_id', $storeId))
+                  ->orWhere('store_id', $storeId)
+                  ->orWhereHas('coupon', fn ($cq) => $cq->where('store_id', $storeId));
+            });
+
+        // Optional branch filter
+        if ($branchId = $request->query('branch_id')) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $redemptions = $query->latest('redeemed_at')->get();
+
+        $totalRedemptions = $redemptions->count();
+        $totalChargedFees = (float) $redemptions->sum('charged_fee');
+        $todayRedemptions = $redemptions->filter(fn ($r) => $r->redeemed_at && $r->redeemed_at->isToday())->count();
+        $todayChargedFees = (float) $redemptions->filter(fn ($r) => $r->redeemed_at && $r->redeemed_at->isToday())->sum('charged_fee');
+
+        $data = $redemptions->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'coupon_id' => $r->coupon_id,
+                'coupon_title' => $r->coupon?->title ?? 'كوبون خصم',
+                'coupon_code' => $r->coupon?->code ?? 'CPN',
+                'discount_type' => $r->coupon?->discount_type ?? 'percentage',
+                'discount_value' => (float) ($r->coupon?->discount_value ?? 0),
+                'customer_id' => $r->user_id,
+                'customer_name' => $r->user?->name ?? 'عميل كانديلا',
+                'customer_phone' => $r->user?->phone ?? '—',
+                'customer_email' => $r->user?->email,
+                'branch_id' => $r->branch_id,
+                'branch_name' => $r->branch?->name ?? 'الفرع الرئيسي',
+                'branch_address' => $r->branch?->address ?? 'طرابلس',
+                'staff_name' => $r->staffUser?->name ?? 'موظف المتجر',
+                'points_awarded' => (int) $r->points_awarded,
+                'charged_fee' => (float) $r->charged_fee,
+                'qr_code_hash' => $r->qr_code_hash,
+                'status' => $r->status ?? 'completed',
+                'redeemed_at' => $r->redeemed_at?->toIso8601String(),
+                'redeemed_at_formatted' => $r->redeemed_at?->format('Y-m-d H:i'),
+            ];
+        });
 
         return response()->json([
-            'data' => $redemptions,
-        ]);
+            'success' => true,
+            'summary' => [
+                'total_redemptions' => $totalRedemptions,
+                'total_charged_fees' => $totalChargedFees,
+                'today_redemptions' => $todayRedemptions,
+                'today_charged_fees' => $todayChargedFees,
+            ],
+            'data' => $data,
+        ], 200);
     }
 }

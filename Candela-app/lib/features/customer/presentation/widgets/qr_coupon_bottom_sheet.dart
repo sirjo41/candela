@@ -1,22 +1,31 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 
-/// Interactive QR Coupon Bottom Sheet Modal
-/// Displays a dynamic single-use QR pass with a 60-second (1-minute) validity countdown.
-/// The QR code remains stable for the full minute and refreshes automatically upon expiration.
+/// Dynamic, Time-Sensitive QR Coupon Bottom Sheet Modal
+/// Fetches an encrypted HMAC-SHA256 hash valid for 30–60 seconds from the backend,
+/// auto-refreshing in real-time to prevent screenshot fraud.
 class QrCouponBottomSheet extends StatefulWidget {
   final List<dynamic> activeCoupons;
   final String userId;
+  final dynamic initialCoupon;
 
   const QrCouponBottomSheet({
     super.key,
     required this.activeCoupons,
     required this.userId,
+    this.initialCoupon,
   });
 
-  static Future<void> show(BuildContext context, {required List<dynamic> activeCoupons, required String userId}) {
+  static Future<void> show(
+    BuildContext context, {
+    required List<dynamic> activeCoupons,
+    required String userId,
+    dynamic initialCoupon,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -24,6 +33,7 @@ class QrCouponBottomSheet extends StatefulWidget {
       builder: (ctx) => QrCouponBottomSheet(
         activeCoupons: activeCoupons,
         userId: userId,
+        initialCoupon: initialCoupon,
       ),
     );
   }
@@ -33,398 +43,512 @@ class QrCouponBottomSheet extends StatefulWidget {
 }
 
 class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
+  final ApiClient _apiClient = ApiClient();
   Map<String, dynamic>? _selectedCoupon;
-  String? _currentQrToken;
-  int _redemptionSeconds = 30; // 30-second anti-fraud validity timer
-  Timer? _passTimer;
+  String? _qrCodeHash;
+  int _totalValiditySeconds = 45;
+  int _remainingSeconds = 45;
+  bool _isLoadingHash = false;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
-    if (widget.activeCoupons.isNotEmpty) {
-      _selectedCoupon = widget.activeCoupons.first;
+    if (widget.initialCoupon != null) {
+      _selectedCoupon = Map<String, dynamic>.from(widget.initialCoupon);
+    } else if (widget.activeCoupons.isNotEmpty) {
+      _selectedCoupon = Map<String, dynamic>.from(widget.activeCoupons.first);
     }
-    _startPassCountdown();
+    _fetchLiveQrHash();
   }
 
   @override
   void dispose() {
-    _passTimer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
-  void _generateQrPassToken() {
+  Future<void> _fetchLiveQrHash() async {
     final coupon = _selectedCoupon;
-    final couponId = coupon?['code'] ?? coupon?['id'] ?? 'PASS';
-    final tokenTimestamp = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
-    _currentQrToken = 'CANDELA:${widget.userId}:$couponId:$tokenTimestamp';
-    _redemptionSeconds = 30; // reset to 30 seconds anti-fraud window
+    if (coupon == null) return;
+
+    if (!mounted) return;
+    setState(() {
+      _isLoadingHash = true;
+    });
+
+    final couponId = coupon['coupon_id'] ?? coupon['id'];
+
+    try {
+      final response = await _apiClient.dio.post(
+        '/qr/generate',
+        data: {
+          'coupon_id': couponId,
+          'valid_seconds': 45,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final hash = data['qr_code_hash'] ?? data['qr_token'];
+        final validSecs = (data['valid_seconds'] as num?)?.toInt() ?? 45;
+
+        if (mounted) {
+          setState(() {
+            _qrCodeHash = hash;
+            _totalValiditySeconds = validSecs;
+            _remainingSeconds = validSecs;
+            _isLoadingHash = false;
+          });
+          _startCountdown();
+          return;
+        }
+      }
+    } catch (_) {
+      // Fallback to time-stamped client token if server call drops
+      final tokenTimestamp = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
+      final fallbackHash = 'CANDELA:${widget.userId}:${coupon['code'] ?? couponId}:$tokenTimestamp';
+      if (mounted) {
+        setState(() {
+          _qrCodeHash = fallbackHash;
+          _totalValiditySeconds = 45;
+          _remainingSeconds = 45;
+          _isLoadingHash = false;
+        });
+        _startCountdown();
+      }
+    }
   }
 
-  void _startPassCountdown() {
-    _passTimer?.cancel();
-    _generateQrPassToken();
-
-    _passTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      if (_redemptionSeconds > 1) {
+      if (_remainingSeconds > 1) {
         setState(() {
-          _redemptionSeconds--;
+          _remainingSeconds--;
         });
       } else {
-        // 30 seconds expired -> regenerate QR pass token and reset timer to 30s
-        setState(() {
-          _generateQrPassToken();
-        });
+        // Auto-refresh when timer reaches 0 to prevent screenshot fraud
+        _fetchLiveQrHash();
       }
     });
   }
 
-  String _formatPassTimer(int totalSecs) {
-    final mins = (totalSecs / 60).floor();
-    final secs = totalSecs % 60;
-    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  void _selectCoupon(Map<String, dynamic> coupon) {
+    setState(() {
+      _selectedCoupon = coupon;
+    });
+    _fetchLiveQrHash();
   }
 
-  void _selectCoupon(Map<String, dynamic> cpn) {
-    setState(() {
-      _selectedCoupon = cpn;
-    });
-    _startPassCountdown();
+  String _formatTimer(int seconds) {
+    final mins = (seconds / 60).floor();
+    final secs = seconds % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final coupon = _selectedCoupon;
-    final qrData = _currentQrToken ?? 'CANDELA:${widget.userId}:PASS:${DateTime.now().millisecondsSinceEpoch}';
+    final progress = _totalValiditySeconds > 0 ? (_remainingSeconds / _totalValiditySeconds) : 0.0;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.darkSlate,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.90,
+    return Directionality(
+      textDirection: loc.textDirection,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.darkSlateSurface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black54,
+              blurRadius: 20,
+              offset: Offset(0, -4),
+            ),
+          ],
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Top drag indicator handle
-              Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Title & Subtitle
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryAmber,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.qr_code_2_rounded,
-                      color: AppColors.darkSlate,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Dynamic Single-Use Pass',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Present this single-use pass at terminal checkout. Code remains stable for 1 minute.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 12.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Main Dynamic QR Display Surface
-              if (coupon == null) ...[
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.90,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag Handle
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                  width: 44,
+                  height: 5,
                   decoration: BoxDecoration(
-                    color: AppColors.darkBackground,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: AppColors.primaryAmber.withValues(alpha: 0.4),
-                      width: 1.5,
-                    ),
+                    color: Colors.white30,
+                    borderRadius: BorderRadius.circular(3),
                   ),
-                  child: Column(
+                ),
+                const SizedBox(height: 16),
+
+                // Header Title & Anti-Fraud Badge
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkAmberAccent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_2_rounded,
+                        color: AppColors.darkSlateSurface,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      loc.tr('qr_pass_title'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  loc.tr('qr_pass_subtitle'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.darkTextSecondary,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Anti-Fraud Shield Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkSlateCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.darkAmberAccent.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.confirmation_number_outlined,
-                        color: AppColors.primaryAmber,
-                        size: 48,
+                        Icons.security_rounded,
+                        color: AppColors.darkAmberAccent,
+                        size: 14,
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No Active Coupon Selected',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Claim an offer card from the home feed or select a saved wallet pass below.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                // Active Coupon QR Card Surface
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryAmber.withValues(alpha: 0.35),
-                        blurRadius: 24,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Active Coupon Title Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryAmber,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                      const SizedBox(width: 6),
+                      Flexible(
                         child: Text(
-                          coupon['title'] ?? 'Selected Pass',
+                          loc.tr('qr_anti_fraud_badge'),
                           style: const TextStyle(
-                            color: AppColors.darkSlate,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
+                            color: AppColors.darkAmberAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
-                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Stable 60-Second QR Code Generator
-                      QrImageView(
-                        data: qrData,
-                        version: QrVersions.auto,
-                        size: 200,
-                        eyeStyle: const QrEyeStyle(
-                          eyeShape: QrEyeShape.square,
-                          color: AppColors.darkSlate,
-                        ),
-                        dataModuleStyle: const QrDataModuleStyle(
-                          dataModuleShape: QrDataModuleShape.square,
-                          color: AppColors.darkBackground,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Countdown Timer for Pass Expiry (60 Seconds / 1 Minute)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _redemptionSeconds > 15
-                              ? AppColors.successGreenLight
-                              : AppColors.errorRed.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.timer_rounded,
-                              size: 16,
-                              color: _redemptionSeconds > 15
-                                  ? AppColors.successGreen
-                                  : AppColors.errorRed,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Pass Valid: ${_formatPassTimer(_redemptionSeconds)}',
-                              style: TextStyle(
-                                color: _redemptionSeconds > 15
-                                    ? AppColors.successGreen
-                                    : AppColors.errorRed,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      Text(
-                        'PAYLOAD: $qrData',
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-              ],
-              const SizedBox(height: 22),
+                const SizedBox(height: 18),
 
-              // Mini List Selector for Active Saved Coupons
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Switch Active Saved Wallet Coupon:',
-                  style: TextStyle(
-                    color: AppColors.primaryAmber,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 180),
-                child: widget.activeCoupons.isEmpty
-                    ? Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.darkBackground,
-                          borderRadius: BorderRadius.circular(16),
+                // QR Code Surface
+                if (coupon == null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkSlateCard,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.darkSlateBorder),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.confirmation_number_outlined,
+                          color: AppColors.darkAmberAccent,
+                          size: 48,
                         ),
-                        child: const Center(
-                          child: Text(
-                            'No active coupons currently in your wallet.',
-                            style: TextStyle(color: Colors.white60, fontSize: 13),
+                        const SizedBox(height: 12),
+                        Text(
+                          loc.tr('no_active_coupon_selected'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: widget.activeCoupons.length,
-                        itemBuilder: (ctx, idx) {
-                          final cpn = Map<String, dynamic>.from(widget.activeCoupons[idx]);
-                          final isSelected = coupon?['code'] == cpn['code'] || coupon?['id'] == cpn['id'];
-
-                          return InkWell(
-                            onTap: () => _selectCoupon(cpn),
+                        const SizedBox(height: 6),
+                        Text(
+                          loc.tr('select_coupon_from_wallet'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.darkTextSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkSlateCard,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppColors.darkAmberAccent.withValues(alpha: 0.5),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.darkAmberAccent.withValues(alpha: 0.1),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Coupon Info Pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.darkSlateSurface,
                             borderRadius: BorderRadius.circular(14),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? const Color(0xFF2B2620) : const Color(0xFF1E1A16),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isSelected ? AppColors.primaryAmber : Colors.white12,
-                                  width: isSelected ? 1.5 : 1.0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  coupon['store_name'] ?? coupon['store'] ?? 'Candela Store',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.confirmation_number_rounded,
-                                    color: isSelected ? AppColors.primaryAmber : Colors.white60,
-                                    size: 20,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.darkAmberAccent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  coupon['discount'] ?? coupon['discount_badge'] ?? 'خصم',
+                                  style: const TextStyle(
+                                    color: AppColors.darkSlateSurface,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 11,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // QR Code Render Canvas
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: _isLoadingHash
+                              ? const SizedBox(
+                                  width: 200,
+                                  height: 200,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.darkAmberAccent,
+                                    ),
+                                  ),
+                                )
+                              : QrImageView(
+                                  data: _qrCodeHash ?? 'CANDELA:${widget.userId}:${coupon['id']}',
+                                  version: QrVersions.auto,
+                                  size: 200.0,
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.darkSlateSurface,
+                                  errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Coupon Code Badge
+                        Text(
+                          coupon['code'] ?? 'CPN-${coupon['id']}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Countdown Progress Bar & Timer
+                        Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.timer_rounded,
+                                      color: AppColors.darkAmberAccent,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${loc.tr('qr_refreshing_in')} ${_formatTimer(_remainingSeconds)}',
+                                      style: const TextStyle(
+                                        color: AppColors.darkAmberAccent,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                InkWell(
+                                  onTap: _isLoadingHash ? null : _fetchLiveQrHash,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Row(
                                       children: [
-                                        Text(
-                                          cpn['title'] ?? 'Discount Pass',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        const Icon(
+                                          Icons.refresh_rounded,
+                                          color: Colors.white70,
+                                          size: 14,
                                         ),
+                                        const SizedBox(width: 4),
                                         Text(
-                                          'Code: ${cpn['code']} • ${cpn['store'] ?? 'Store'}',
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.6),
+                                          loc.tr('qr_refresh_now'),
+                                          style: const TextStyle(
+                                            color: Colors.white70,
                                             fontSize: 11,
+                                            decoration: TextDecoration.underline,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    isSelected
-                                        ? Icons.check_circle_rounded
-                                        : Icons.arrow_forward_ios_rounded,
-                                    color: isSelected ? AppColors.primaryAmber : Colors.white30,
-                                    size: 16,
-                                  ),
-                                ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress.clamp(0.0, 1.0),
+                                backgroundColor: AppColors.darkSlateSurface,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  _remainingSeconds <= 10 ? AppColors.errorRed : AppColors.darkAmberAccent,
+                                ),
+                                minHeight: 6,
                               ),
                             ),
-                          );
-                        },
-                      ),
-              ),
-              const SizedBox(height: 16),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
 
-              // Close Action Button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryAmber,
-                  foregroundColor: AppColors.darkSlate,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                // Active Coupons Switcher Carousel
+                if (widget.activeCoupons.length > 1) ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '${loc.tr('wallet_title')} (${widget.activeCoupons.length})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 52,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: widget.activeCoupons.length,
+                      itemBuilder: (ctx, idx) {
+                        final c = widget.activeCoupons[idx];
+                        final isSelected = (_selectedCoupon?['id'] == c['id'] || _selectedCoupon?['code'] == c['code']);
+
+                        return GestureDetector(
+                          onTap: () => _selectCoupon(Map<String, dynamic>.from(c)),
+                          child: Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.darkAmberAccent : AppColors.darkSlateCard,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isSelected ? AppColors.darkAmberAccent : AppColors.darkSlateBorder,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              c['store_name'] ?? c['store'] ?? 'كوبون #${idx + 1}',
+                              style: TextStyle(
+                                color: isSelected ? AppColors.darkSlateSurface : Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                // Close Button
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkSlateCard,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: const BorderSide(color: AppColors.darkSlateBorder),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    loc.tr('cancel'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Done / Close Modal',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

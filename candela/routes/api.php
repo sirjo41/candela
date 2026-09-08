@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\MerchantController;
 use App\Http\Controllers\Api\V1\QrController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,6 +41,8 @@ Route::prefix('v1')->group(function () {
         Route::post('rewards/redeem', [CustomerController::class, 'redeemPoints']);
         Route::get('wallet', [CustomerController::class, 'wallet']);
         Route::get('profile', [CustomerController::class, 'profile']);
+        Route::post('profile/update', [ProfileController::class, 'update']);
+        Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
     });
 
     // 4. Authenticated Merchant & Staff Operations
@@ -52,6 +55,8 @@ Route::prefix('v1')->group(function () {
         Route::post('verify-qr', [QrVerificationController::class, 'verifyQr']);
         Route::get('dashboard', [MerchantController::class, 'dashboard']);
         Route::get('history', [MerchantController::class, 'history']);
+        Route::post('profile/update', [ProfileController::class, 'update']);
+        Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
     });
 
     // 5. Authenticated QR Operations
@@ -59,5 +64,13 @@ Route::prefix('v1')->group(function () {
         Route::post('generate', [QrController::class, 'generate']);
         Route::post('validate', [QrController::class, 'validateQr']);
         Route::post('verify', [QrVerificationController::class, 'verifyQr']);
+    });
+
+    // 6. User Profile & Security Settings (Unified)
+    Route::middleware('auth:sanctum')->prefix('profile')->group(function () {
+        Route::get('/', [ProfileController::class, 'profile']);
+        Route::post('update', [ProfileController::class, 'update']);
+        Route::put('/', [ProfileController::class, 'update']);
+        Route::post('change-password', [ProfileController::class, 'changePassword']);
     });
 });

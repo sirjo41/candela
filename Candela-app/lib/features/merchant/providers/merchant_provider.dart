@@ -246,7 +246,34 @@ class MerchantProvider extends ChangeNotifier {
     return false;
   }
 
-  /// Verify Customer QR Code Pass with Redemption Fee deduction
+  // Redemption History Ledger State
+  List<dynamic> _redemptionHistory = [];
+  Map<String, dynamic> _historySummary = {};
+  bool _isLoadingHistory = false;
+
+  List<dynamic> get redemptionHistory => _redemptionHistory;
+  Map<String, dynamic> get historySummary => _historySummary;
+  bool get isLoadingHistory => _isLoadingHistory;
+
+  /// Fetch Merchant Redemption History Ledger strictly from Laravel MySQL DB
+  Future<void> fetchRedemptionHistory({int? branchId}) async {
+    _isLoadingHistory = true;
+    notifyListeners();
+
+    try {
+      final queryParams = branchId != null ? {'branch_id': branchId} : null;
+      final response = await _apiClient.dio.get('/merchant/history', queryParameters: queryParams);
+      if (response.statusCode == 200 && response.data != null) {
+        _redemptionHistory = List.from(response.data['data'] ?? []);
+        _historySummary = Map<String, dynamic>.from(response.data['summary'] ?? {});
+      }
+    } catch (_) {}
+
+    _isLoadingHistory = false;
+    notifyListeners();
+  }
+
+  /// Verify Customer QR Code Pass with Redemption Fee deduction calling /qr/validate
   Future<VerificationResult> verifyQrToken(String qrToken) async {
     final cleanToken = qrToken.trim();
     if (cleanToken.isEmpty) {
@@ -258,19 +285,29 @@ class MerchantProvider extends ChangeNotifier {
     }
 
     try {
-      final response = await _apiClient.dio.post(
-        '/merchant/verify-qr',
-        data: {'qr_token': cleanToken, 'coupon_code': cleanToken},
-      );
+      Response? response;
+      try {
+        response = await _apiClient.dio.post(
+          '/qr/validate',
+          data: {'qr_code_hash': cleanToken, 'qr_token': cleanToken, 'coupon_code': cleanToken},
+        );
+      } catch (_) {
+        response = await _apiClient.dio.post(
+          '/merchant/verify-qr',
+          data: {'qr_token': cleanToken, 'coupon_code': cleanToken},
+        );
+      }
 
-      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+      if (response.statusCode == 200 && response.data != null && (response.data['success'] == true || response.data['redemption'] != null)) {
         _totalRedemptions++;
         await fetchDashboardMetrics();
+        await fetchRedemptionHistory();
 
+        final resData = response.data['data'] ?? response.data['redemption'] ?? {};
         return VerificationResult(
           isSuccess: true,
           message: response.data['message'] ?? 'تم التحقق من الكوبون بنجاح!',
-          redemptionData: response.data['data'] as Map<String, dynamic>?,
+          redemptionData: Map<String, dynamic>.from(resData is Map ? resData : {}),
         );
       }
     } on DioException catch (e) {
@@ -290,7 +327,7 @@ class MerchantProvider extends ChangeNotifier {
       } else if (apiEx.isExpired) {
         return VerificationResult(
           isSuccess: false,
-          message: 'هذا الكوبون منتهي الصلاحية.',
+          message: 'هذا الكوبون منتهي الصلاحية أو انتهت صلاحية الرمز.',
           errorCode: 'EXPIRED_COUPON',
         );
       } else if (apiEx.isNotFound) {
@@ -309,7 +346,7 @@ class MerchantProvider extends ChangeNotifier {
     } catch (e) {
       return VerificationResult(
         isSuccess: false,
-        message: 'فشل الاتصال بخادم واجهة.',
+        message: 'فشل الاتصال بخادم واجهة: ${e.toString()}',
         errorCode: 'SERVER_ERROR',
       );
     }

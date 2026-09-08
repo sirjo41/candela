@@ -14,6 +14,7 @@ class OfferModel {
   final bool isClaimed;
   final bool isActive;
   final String description;
+  final String? campaignId;
 
   OfferModel({
     required this.id,
@@ -30,6 +31,7 @@ class OfferModel {
     this.isClaimed = false,
     this.isActive = true,
     this.description = '',
+    this.campaignId,
   }) : title = (title != null && title.isNotEmpty)
             ? title
             : (description.isNotEmpty ? description : storeName);
@@ -137,6 +139,7 @@ class OfferModel {
       isClaimed: json['is_claimed'] ?? json['claimed'] ?? false,
       isActive: json['is_active'] ?? true,
       description: descVal.toString(),
+      campaignId: json['campaign_id']?.toString(),
     );
   }
 
