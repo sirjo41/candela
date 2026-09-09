@@ -204,4 +204,55 @@ class MerchantController extends Controller
             'data' => $data,
         ], 200);
     }
+
+    /**
+     * GET /api/v1/merchant/store-qr
+     * Returns the store QR payload for merchant display at checkout counter.
+     * Customer scans this to select and redeem a coupon.
+     */
+    public function storeQr(Request $request): JsonResponse
+    {
+        $merchant = $request->user();
+        if (! $merchant) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $store = $merchant->store ?? \App\Models\Store::find($merchant->store_id) ?? \App\Models\Store::first();
+
+        if (! $store) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No store found for this merchant account.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
+        }
+
+        $secretKey = config('app.key', 'CandelaSmartAntiFraudSecretKey2026');
+        $timestamp = now()->timestamp;
+        $storeToken = hash_hmac('sha256', "STORE:{$store->id}:{$timestamp}", $secretKey);
+
+        // Build QR payload that the customer app reads
+        $qrPayload = [
+            'type'       => 'store',
+            'store_id'   => $store->id,
+            'store_name' => $store->name,
+            'token'      => $storeToken,
+            'issued_at'  => $timestamp,
+        ];
+        $qrData = base64_encode(json_encode($qrPayload));
+
+        $branches = $store->branches()->where('is_active', true)->get(['id', 'name', 'address']);
+        $wallet   = $store->getOrCreateWallet();
+
+        return response()->json([
+            'success'        => true,
+            'qr_data'        => $qrData,
+            'store_id'       => $store->id,
+            'store_name'     => $store->name,
+            'store_logo'     => $store->logo ? asset('storage/' . ltrim($store->logo, '/')) : null,
+            'redemption_fee' => (float) ($store->redemption_fee_rate ?? 5.00),
+            'wallet_balance' => (float) ($wallet->balance ?? $store->balance ?? 0.0),
+            'branches'       => $branches,
+        ], 200);
+    }
 }

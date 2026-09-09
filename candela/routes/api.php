@@ -37,6 +37,7 @@ Route::prefix('v1')->group(function () {
         Route::post('campaigns/{id}/claim', [CustomerController::class, 'claim']);
         Route::post('coupons/{id}/claim', [CustomerController::class, 'claim']);
         Route::get('qr-pass/{couponId}', [CustomerController::class, 'showQrPass']);
+        Route::post('redeem-store', [CustomerController::class, 'redeemStoreQr']);
         Route::get('rewards', [CustomerController::class, 'rewards']);
         Route::post('rewards/redeem', [CustomerController::class, 'redeemPoints']);
         Route::get('wallet', [CustomerController::class, 'wallet']);
@@ -55,6 +56,7 @@ Route::prefix('v1')->group(function () {
         Route::post('verify-qr', [QrVerificationController::class, 'verifyQr']);
         Route::get('dashboard', [MerchantController::class, 'dashboard']);
         Route::get('history', [MerchantController::class, 'history']);
+        Route::get('store-qr', [MerchantController::class, 'storeQr']);
         Route::post('profile/update', [ProfileController::class, 'update']);
         Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
     });

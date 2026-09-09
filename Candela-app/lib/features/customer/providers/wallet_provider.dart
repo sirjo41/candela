@@ -170,4 +170,45 @@ class WalletProvider extends ChangeNotifier {
 
     return true;
   }
+
+  /// Redeem a coupon by scanning the Merchant Store QR Code.
+  /// Calls POST /customer/redeem-store and moves coupon from active → used.
+  Future<Map<String, dynamic>> redeemCouponAtStore({
+    required String storeQrData,
+    required int couponId,
+  }) async {
+    try {
+      final res = await _apiClient.dio.post('/customer/redeem-store', data: {
+        'store_qr_data': storeQrData,
+        'coupon_id': couponId,
+      });
+
+      if (res.statusCode == 200 && res.data != null && res.data['success'] == true) {
+        // Move coupon from active → used in local state
+        final idx = _activeCoupons.indexWhere(
+          (c) => c['coupon_id']?.toString() == couponId.toString() ||
+                 c['id']?.toString() == couponId.toString(),
+        );
+        if (idx != -1) {
+          final redeemed = Map<String, dynamic>.from(_activeCoupons[idx]);
+          redeemed['status'] = 'used';
+          redeemed['redeemed_at'] = DateTime.now().toIso8601String();
+          _activeCoupons.removeAt(idx);
+          _usedCoupons.insert(0, redeemed);
+          _saveToLocalCache();
+          notifyListeners();
+        }
+        // Full sync
+        fetchWallet();
+        return {'success': true, 'data': res.data};
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'فشل الاسترداد. حاول مرة أخرى.';
+      final code = e.response?.data?['error_code'] ?? 'UNKNOWN';
+      return {'success': false, 'message': msg, 'error_code': code};
+    } catch (e) {
+      return {'success': false, 'message': 'خطأ غير متوقع: ${e.toString()}', 'error_code': 'SERVER_ERROR'};
+    }
+    return {'success': false, 'message': 'فشل الاسترداد.', 'error_code': 'UNKNOWN'};
+  }
 }

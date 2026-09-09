@@ -11,6 +11,7 @@ import '../providers/merchant_provider.dart';
 import 'merchant_dashboard_screen.dart';
 import 'manage_offers_screen.dart';
 import 'launch_offer_screen.dart';
+import 'merchant_store_qr_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'merchant_history_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
@@ -141,21 +142,21 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            // 0. Dashboard (IMG-20260725-WA0001.jpg)
+            // 0. Dashboard
             MerchantDashboardScreen(
               onNavigateTab: _navigateToTab,
               onLaunchOffer: _openLaunchOfferScreen,
             ),
 
-            // 1. Manage Offers & Analytics (إدارة العروض والتحليلات)
+            // 1. Manage Offers & Analytics
             ManageOffersScreen(
               onCreateNewOffer: _openLaunchOfferScreen,
             ),
 
-            // 2. QR Verification Scanner (IMG-20260725-WA0015.jpg)
-            const QrScannerScreen(),
+            // 2. Merchant Store QR Code (displayed at checkout for customers to scan)
+            const MerchantStoreQrScreen(),
 
-            // 3. Read-Only Redemption History Ledger Dashboard
+            // 3. Read-Only Redemption History Ledger
             const MerchantHistoryScreen(),
 
             // 4. Settings & Store Profile
@@ -192,8 +193,8 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
                 label: 'إدارة العروض',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.qr_code_scanner_rounded),
-                label: 'مسح الكود',
+                icon: Icon(Icons.qr_code_rounded),
+                label: 'رمز QR المتجر',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.receipt_long_rounded),

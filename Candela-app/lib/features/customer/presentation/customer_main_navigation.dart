@@ -14,6 +14,7 @@ import 'widgets/qr_coupon_bottom_sheet.dart';
 import 'widgets/custom_bottom_nav_bar.dart';
 import 'widgets/edit_profile_dialog.dart';
 import 'widgets/change_password_dialog.dart';
+import 'customer_scan_merchant_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../models/campaign_model.dart';
 
@@ -115,15 +116,151 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   }
 
   void _openQrModalSheet({dynamic initialCoupon}) {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final userId = auth.user?.id.toString() ?? 'USR-001';
+    // Show choice: scan merchant QR or view wallet passes
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white30,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Icon(Icons.qr_code_scanner_rounded,
+                      color: AppColors.primaryAmber, size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'رمز QR',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Option 1: Scan Merchant QR
+              _qrOption(
+                ctx: ctx,
+                icon: Icons.storefront_rounded,
+                title: 'مسح رمز QR المتجر',
+                subtitle: 'امسح رمز المتجر لاسترداد كوبونك والحصول على الخصم',
+                color: AppColors.primaryAmber,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerScanMerchantScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              // Option 2: Show wallet QR pass
+              _qrOption(
+                ctx: ctx,
+                icon: Icons.confirmation_number_rounded,
+                title: 'عرض بطاقات المحفظة',
+                subtitle: 'اعرض QR كوبون للتاجر إذا طلبه منك',
+                color: AppColors.copperOrange,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  final auth =
+                      Provider.of<AuthProvider>(context, listen: false);
+                  final walletProvider =
+                      Provider.of<WalletProvider>(context, listen: false);
+                  QrCouponBottomSheet.show(
+                    context,
+                    activeCoupons: walletProvider.activeCoupons,
+                    userId: auth.user?.id.toString() ?? 'USR-001',
+                    initialCoupon: initialCoupon,
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء',
+                    style: TextStyle(color: AppColors.darkTextSecondary)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    QrCouponBottomSheet.show(
-      context,
-      activeCoupons: walletProvider.activeCoupons,
-      userId: userId,
-      initialCoupon: initialCoupon,
+  Widget _qrOption({
+    required BuildContext ctx,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: AppColors.darkTextSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: color, size: 16),
+          ],
+        ),
+      ),
     );
   }
 

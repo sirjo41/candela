@@ -7,11 +7,13 @@ use App\Models\Campaign;
 use App\Models\ClaimedCoupon;
 use App\Models\Coupon;
 use App\Models\Offer;
+use App\Models\Redemption;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
@@ -506,6 +508,223 @@ class CustomerController extends Controller
                 ],
             ],
         ], 201);
+    }
+
+    /**
+     * POST /api/v1/customer/redeem-store
+     * Customer scans merchant store QR code and redeems one of their active coupons.
+     * Atomically: marks coupon redeemed, deducts fee from merchant, awards loyalty points,
+     * creates Redemption audit record, and sends verification notification to merchant.
+     */
+    public function redeemStoreQr(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $validated = $request->validate([
+            'store_qr_data' => ['required', 'string'],
+            'coupon_id'     => ['required', 'integer'],
+        ]);
+
+        // 1. Decode and validate the merchant Store QR payload
+        $storePayload = json_decode(base64_decode($validated['store_qr_data']), true);
+        if (! is_array($storePayload) || ($storePayload['type'] ?? '') !== 'store' || empty($storePayload['store_id'])) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'رمز QR للمتجر غير صالح أو تالف.',
+                'error_code' => 'INVALID_STORE_QR',
+            ], 422);
+        }
+
+        $store = Store::find($storePayload['store_id']);
+        if (! $store) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'المتجر غير موجود أو غير نشط.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
+        }
+
+        // 2. Validate the customer's claimed coupon
+        $coupon = Coupon::with(['store', 'offer'])->find($validated['coupon_id']);
+        if (! $coupon) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'الكوبون غير موجود.',
+                'error_code' => 'COUPON_NOT_FOUND',
+            ], 404);
+        }
+
+        $claimed = ClaimedCoupon::where('user_id', $user->id)
+            ->where('coupon_id', $coupon->id)
+            ->first();
+
+        if (! $claimed) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'هذا الكوبون غير موجود في محفظتك.',
+                'error_code' => 'NOT_IN_WALLET',
+            ], 403);
+        }
+
+        if ($claimed->status === 'redeemed' || $coupon->isRedeemed()) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'هذا الكوبون تم استخدامه مسبقاً.',
+                'error_code' => 'ALREADY_REDEEMED',
+                'redeemed_at' => $coupon->redeemed_at?->toIso8601String(),
+            ], 400);
+        }
+
+        if ($coupon->isExpired()) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'هذا الكوبون منتهي الصلاحية.',
+                'error_code' => 'EXPIRED_COUPON',
+                'expires_at' => $coupon->expires_at?->toIso8601String(),
+            ], 422);
+        }
+
+        // 3. Check for duplicate redemption by QR hash in Redemption log
+        $hashedQr = hash('sha256', $validated['store_qr_data'] . ':' . $coupon->id . ':' . $user->id);
+        if (Redemption::where('qr_code_hash', $hashedQr)->exists()) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'تم إرسال طلب الاسترداد هذا بالفعل.',
+                'error_code' => 'DUPLICATE_REQUEST',
+            ], 400);
+        }
+
+        $chargedFee    = (float) ($coupon->redemption_fee > 0 ? $coupon->redemption_fee : ($store->redemption_fee_rate ?? 5.00));
+        $pointsAwarded = 50;
+
+        try {
+            $result = DB::transaction(function () use ($coupon, $claimed, $store, $user, $chargedFee, $pointsAwarded, $hashedQr, $storePayload) {
+                // Lock coupon row
+                $lockedCoupon = Coupon::where('id', $coupon->id)->lockForUpdate()->first();
+
+                // Mark coupon redeemed
+                $lockedCoupon->status      = 'redeemed';
+                $lockedCoupon->redeemed_at = now();
+                $lockedCoupon->uses_count  = $lockedCoupon->uses_count + 1;
+                $lockedCoupon->save();
+
+                // Mark claimed_coupon redeemed
+                $claimed->status      = 'redeemed';
+                $claimed->redeemed_at = now();
+                $claimed->save();
+
+                // Deduct redemption fee from merchant wallet
+                try {
+                    $wallet = $store->getOrCreateWallet();
+                    $wallet->deduct(
+                        $chargedFee,
+                        'redemption_fee',
+                        $lockedCoupon->id,
+                        Coupon::class,
+                        "Redemption fee for coupon '{$lockedCoupon->code}' (customer scan)"
+                    );
+                    $store->balance = $wallet->balance;
+                    $store->save();
+                } catch (\Throwable $we) {
+                    // Fallback: deduct from store balance column
+                    if ($store->balance >= $chargedFee) {
+                        $store->decrement('balance', $chargedFee);
+                    }
+                }
+
+                // Award loyalty points to customer
+                $freshUser = User::where('id', $user->id)->lockForUpdate()->first();
+                if ($freshUser) {
+                    $freshUser->increment('loyalty_points', $pointsAwarded);
+                }
+
+                // Create Redemption audit record
+                $redemption = Redemption::create([
+                    'coupon_id'     => $lockedCoupon->id,
+                    'offer_id'      => $lockedCoupon->offer_id,
+                    'store_id'      => $store->id,
+                    'user_id'       => $user->id,
+                    'staff_user_id' => null,
+                    'qr_code_hash'  => $hashedQr,
+                    'qr_token'      => 'STORE_SCAN:' . $storePayload['store_id'],
+                    'charged_fee'   => $chargedFee,
+                    'points_awarded'=> $pointsAwarded,
+                    'status'        => 'completed',
+                    'redeemed_at'   => now(),
+                ]);
+
+                // Dispatch a notification to the merchant user(s) of this store
+                $notificationData = json_encode([
+                    'type'          => 'redemption_verified',
+                    'message'       => "تم استرداد كوبون '{$lockedCoupon->code}' بواسطة العميل {$user->name}.",
+                    'coupon_code'   => $lockedCoupon->code,
+                    'coupon_title'  => $lockedCoupon->title,
+                    'customer_name' => $user->name,
+                    'customer_phone'=> $user->phone,
+                    'discount_type' => $lockedCoupon->discount_type,
+                    'discount_value'=> (float) $lockedCoupon->discount_value,
+                    'charged_fee'   => $chargedFee,
+                    'points_awarded'=> $pointsAwarded,
+                    'redeemed_at'   => now()->toIso8601String(),
+                    'redemption_id' => $redemption->id,
+                ]);
+
+                $merchantUsers = \App\Models\User::where('store_id', $store->id)
+                    ->whereIn('role', ['merchant', 'admin'])
+                    ->get();
+
+                foreach ($merchantUsers as $merchantUser) {
+                    \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                        'id'              => \Illuminate\Support\Str::uuid(),
+                        'type'            => 'App\\Notifications\\RedemptionVerified',
+                        'notifiable_type' => \App\Models\User::class,
+                        'notifiable_id'   => $merchantUser->id,
+                        'data'            => $notificationData,
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
+                    ]);
+                }
+
+                return [
+                    'redemption'     => $redemption,
+                    'coupon'         => $lockedCoupon,
+                    'points_awarded' => $pointsAwarded,
+                    'charged_fee'    => $chargedFee,
+                    'new_points'     => $freshUser?->fresh()?->loyalty_points ?? ($user->loyalty_points + $pointsAwarded),
+                ];
+            });
+
+            return response()->json([
+                'success'     => true,
+                'message'     => 'تم استخدام الكوبون وتطبيق الخصم بنجاح! 🎉',
+                'redemption'  => [
+                    'id'             => $result['redemption']->id,
+                    'coupon_code'    => $result['coupon']->code,
+                    'coupon_title'   => $result['coupon']->title,
+                    'discount_type'  => $result['coupon']->discount_type,
+                    'discount_value' => (float) $result['coupon']->discount_value,
+                    'store_name'     => $store->name,
+                    'points_awarded' => $result['points_awarded'],
+                    'charged_fee'    => $result['charged_fee'],
+                    'redeemed_at'    => $result['redemption']->redeemed_at->toIso8601String(),
+                ],
+                'customer'    => [
+                    'id'             => $user->id,
+                    'name'           => $user->name,
+                    'new_loyalty_points' => $result['new_points'],
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'فشل الاسترداد: ' . $e->getMessage(),
+                'error_code' => 'REDEMPTION_FAILED',
+            ], 500);
+        }
     }
 
     /**

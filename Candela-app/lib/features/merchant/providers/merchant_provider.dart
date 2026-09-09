@@ -273,6 +273,28 @@ class MerchantProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Store QR State
+  Map<String, dynamic> _storeQrData = {};
+  bool _isLoadingStoreQr = false;
+
+  Map<String, dynamic> get storeQrData => _storeQrData;
+  bool get isLoadingStoreQr => _isLoadingStoreQr;
+
+  /// Fetch the merchant's store QR payload from the backend
+  Future<void> fetchStoreQrData() async {
+    _isLoadingStoreQr = true;
+    notifyListeners();
+    try {
+      final response = await _apiClient.dio.get('/merchant/store-qr');
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        _storeQrData = Map<String, dynamic>.from(response.data);
+        _storeName = response.data['store_name'] ?? _storeName;
+      }
+    } catch (_) {}
+    _isLoadingStoreQr = false;
+    notifyListeners();
+  }
+
   /// Verify Customer QR Code Pass with Redemption Fee deduction calling /qr/validate
   Future<VerificationResult> verifyQrToken(String qrToken) async {
     final cleanToken = qrToken.trim();
