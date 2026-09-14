@@ -37,7 +37,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   int _walletSubTab = 0; // 0: Active, 1: Used, 2: Expired
 
   // Search controllers for real-time responsive filtering
-  final TextEditingController _exploreSearchController = TextEditingController();
+  final TextEditingController _exploreSearchController =
+      TextEditingController();
   final TextEditingController _storesSearchController = TextEditingController();
   String _exploreSearchQuery = '';
   String _storesSearchQuery = '';
@@ -47,7 +48,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<WalletProvider>(context, listen: false).fetchWallet();
-      final feedProvider = Provider.of<CustomerFeedProvider>(context, listen: false);
+      final feedProvider =
+          Provider.of<CustomerFeedProvider>(context, listen: false);
       feedProvider.fetchFeedData();
       feedProvider.fetchCampaigns();
       feedProvider.fetchStores();
@@ -63,7 +65,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
 
   void _claimOffer(BuildContext context, dynamic offer) async {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final feedProvider = Provider.of<CustomerFeedProvider>(context, listen: false);
+    final feedProvider =
+        Provider.of<CustomerFeedProvider>(context, listen: false);
     final loc = AppLocalizations.of(context);
 
     final success = await walletProvider.claimCoupon({
@@ -85,7 +88,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
           SnackBar(
             backgroundColor: AppColors.successGreen,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             content: Row(
               children: [
                 const Icon(Icons.check_circle_rounded, color: Colors.white),
@@ -107,8 +111,12 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
           SnackBar(
             backgroundColor: AppColors.copperOrange,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            content: Text(walletProvider.errorMessage ?? (loc.isArabic ? 'العرض موجود بالفعل في محفظتك.' : 'Offer is already in your wallet.')),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Text(walletProvider.errorMessage ??
+                (loc.isArabic
+                    ? 'العرض موجود بالفعل في محفظتك.'
+                    : 'Offer is already in your wallet.')),
           ),
         );
       }
@@ -296,8 +304,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkSlateCard : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: isDark ? Border.all(color: AppColors.darkSlateBorder) : null,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+              border:
+                  isDark ? Border.all(color: AppColors.darkSlateBorder) : null,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -319,7 +329,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                         color: AppColors.darkAmberAccent,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.support_agent_rounded, color: AppColors.darkSlateSurface, size: 24),
+                      child: const Icon(Icons.support_agent_rounded,
+                          color: AppColors.darkSlateSurface, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -330,12 +341,16 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.textPrimary,
+                            color:
+                                isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
                         Text(
-                          loc.isArabic ? 'فريق خدمة عملاء كانديلا متاح على مدار الساعة' : 'Candela support team is available 24/7',
-                          style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                          loc.isArabic
+                              ? 'فريق خدمة عملاء كانديلا متاح على مدار الساعة'
+                              : 'Candela support team is available 24/7',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.darkTextSecondary),
                         ),
                       ],
                     ),
@@ -344,53 +359,73 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                 const SizedBox(height: 20),
                 _buildSupportOption(
                   icon: Icons.chat_bubble_outline_rounded,
-                  title: loc.isArabic ? 'محادثة مباشرة عبر واتساب' : 'Direct WhatsApp Chat',
+                  title: loc.isArabic
+                      ? 'محادثة مباشرة عبر واتساب'
+                      : 'Direct WhatsApp Chat',
                   subtitle: '+218 91 000 0000',
                   color: AppColors.successGreen,
                   onTap: () {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(loc.isArabic ? 'جاري فتح محادثة الدعم عبر واتساب...' : 'Opening WhatsApp support...')),
+                      SnackBar(
+                          content: Text(loc.isArabic
+                              ? 'جاري فتح محادثة الدعم عبر واتساب...'
+                              : 'Opening WhatsApp support...')),
                     );
                   },
                 ),
                 const SizedBox(height: 10),
                 _buildSupportOption(
                   icon: Icons.phone_in_talk_rounded,
-                  title: loc.isArabic ? 'الاتصال المباشر بالرقم المجاني' : 'Toll-Free Phone Call',
+                  title: loc.isArabic
+                      ? 'الاتصال المباشر بالرقم المجاني'
+                      : 'Toll-Free Phone Call',
                   subtitle: '800-CANDELA (800-2263352)',
                   color: AppColors.darkAmberAccent,
                   onTap: () {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(loc.isArabic ? 'جاري الاتصال بخدمة العملاء...' : 'Calling customer support...')),
+                      SnackBar(
+                          content: Text(loc.isArabic
+                              ? 'جاري الاتصال بخدمة العملاء...'
+                              : 'Calling customer support...')),
                     );
                   },
                 ),
                 const SizedBox(height: 10),
                 _buildSupportOption(
                   icon: Icons.mail_outline_rounded,
-                  title: loc.isArabic ? 'الدعم الفني عبر البريد الإلكتروني' : 'Email Support Desk',
+                  title: loc.isArabic
+                      ? 'الدعم الفني عبر البريد الإلكتروني'
+                      : 'Email Support Desk',
                   subtitle: 'support@candela.app',
                   color: AppColors.royalNavy,
                   onTap: () {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(loc.isArabic ? 'تم نسخ بريد الدعم: support@candela.app' : 'Copied support email')),
+                      SnackBar(
+                          content: Text(loc.isArabic
+                              ? 'تم نسخ بريد الدعم: support@candela.app'
+                              : 'Copied support email')),
                     );
                   },
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? AppColors.darkSlateSurface : Colors.grey.shade200,
-                    foregroundColor: isDark ? Colors.white : AppColors.textPrimary,
+                    backgroundColor: isDark
+                        ? AppColors.darkSlateSurface
+                        : Colors.grey.shade200,
+                    foregroundColor:
+                        isDark ? Colors.white : AppColors.textPrimary,
                     minimumSize: const Size.fromHeight(46),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text(loc.tr('cancel'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(loc.tr('cancel'),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -417,7 +452,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSlateSurface : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+          border: Border.all(
+              color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
         ),
         child: Row(
           children: [
@@ -444,12 +480,14 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.darkTextSecondary),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white38 : Colors.black38),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: isDark ? Colors.white38 : Colors.black38),
           ],
         ),
       ),
@@ -477,10 +515,12 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   child: InkWell(
                     onTap: () => auth.switchRole('merchant'),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.storefront_rounded, color: Colors.white, size: 20),
+                          const Icon(Icons.storefront_rounded,
+                              color: Colors.white, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -494,7 +534,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               ),
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                          const Icon(Icons.arrow_forward_ios_rounded,
+                              color: Colors.white, size: 14),
                         ],
                       ),
                     ),
@@ -503,12 +544,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
 
               // Main App Bar
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSlateSurface : Colors.white,
                   border: Border(
                     bottom: BorderSide(
-                      color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey,
+                      color: isDark
+                          ? AppColors.darkSlateBorder
+                          : AppColors.borderGrey,
                       width: 1,
                     ),
                   ),
@@ -523,11 +567,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [AppColors.darkAmberAccent, AppColors.copperOrange],
+                              colors: [
+                                AppColors.darkAmberAccent,
+                                AppColors.copperOrange
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 20),
+                          child: const Icon(Icons.local_fire_department_rounded,
+                              color: Colors.white, size: 20),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -536,7 +584,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                             fontSize: 19,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
-                            color: isDark ? Colors.white : AppColors.textPrimary,
+                            color:
+                                isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -552,8 +601,14 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               children: [
                                 IconButton(
                                   icon: Icon(
-                                    unread > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
-                                    color: unread > 0 ? AppColors.darkAmberAccent : (isDark ? Colors.white70 : AppColors.textSecondary),
+                                    unread > 0
+                                        ? Icons.notifications_active_rounded
+                                        : Icons.notifications_none_rounded,
+                                    color: unread > 0
+                                        ? AppColors.darkAmberAccent
+                                        : (isDark
+                                            ? Colors.white70
+                                            : AppColors.textSecondary),
                                   ),
                                   onPressed: () {
                                     notifProvider.fetchNotifications();
@@ -565,11 +620,17 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                     right: 8,
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(color: AppColors.errorRed, shape: BoxShape.circle),
-                                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                      decoration: const BoxDecoration(
+                                          color: AppColors.errorRed,
+                                          shape: BoxShape.circle),
+                                      constraints: const BoxConstraints(
+                                          minWidth: 16, minHeight: 16),
                                       child: Text(
                                         '$unread',
-                                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold),
                                         textAlign: TextAlign.center,
                                       ),
                                     ),
@@ -585,7 +646,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                             radius: 18,
                             backgroundColor: AppColors.darkAmberAccent,
                             child: Text(
-                              user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'C',
+                              user?.name.isNotEmpty == true
+                                  ? user!.name[0].toUpperCase()
+                                  : 'C',
                               style: const TextStyle(
                                 color: AppColors.darkSlateSurface,
                                 fontWeight: FontWeight.bold,
@@ -614,7 +677,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     // Tab 2: Sized box dummy for center QR FAB
                     const SizedBox.shrink(),
 
-                    // Tab 3: Wallet / العروض
+                    // Tab 3: Wallet / المحفظة
                     _buildWalletTab(),
 
                     // Tab 4: Profile / القائمة
@@ -662,7 +725,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
         final campaigns = feedProvider.campaigns.where((c) {
           if (_exploreSearchQuery.isEmpty) return true;
           final q = _exploreSearchQuery.toLowerCase();
-          return c.title.toLowerCase().contains(q) || c.storeName.toLowerCase().contains(q);
+          return c.title.toLowerCase().contains(q) ||
+              c.storeName.toLowerCase().contains(q);
         }).toList();
 
         return RefreshIndicator(
@@ -682,13 +746,18 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   children: [
                     // Live Responsive Search Bar
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       child: Container(
                         height: 48,
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSlateCard : Colors.white,
+                          color:
+                              isDark ? AppColors.darkSlateCard : Colors.white,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                          border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkSlateBorder
+                                  : AppColors.borderGrey),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.04),
@@ -700,19 +769,24 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           children: [
-                            const Icon(Icons.search_rounded, color: AppColors.darkAmberAccent, size: 22),
+                            const Icon(Icons.search_rounded,
+                                color: AppColors.darkAmberAccent, size: 22),
                             const SizedBox(width: 10),
                             Expanded(
                               child: TextField(
                                 controller: _exploreSearchController,
                                 style: TextStyle(
-                                  color: isDark ? Colors.white : AppColors.textPrimary,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.textPrimary,
                                   fontSize: 13.5,
                                 ),
                                 decoration: InputDecoration(
                                   hintText: loc.tr('search_placeholder'),
                                   hintStyle: TextStyle(
-                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textMuted,
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textMuted,
                                     fontSize: 13,
                                   ),
                                   border: InputBorder.none,
@@ -754,26 +828,37 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     SizedBox(
                       height: 145,
                       child: feedProvider.isLoadingCampaigns
-                          ? const Center(child: CircularProgressIndicator(color: AppColors.darkAmberAccent))
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.darkAmberAccent))
                           : campaigns.isEmpty
                               ? Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16),
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: isDark ? AppColors.darkSlateCard : Colors.white,
+                                    color: isDark
+                                        ? AppColors.darkSlateCard
+                                        : Colors.white,
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                                    border: Border.all(
+                                        color: isDark
+                                            ? AppColors.darkSlateBorder
+                                            : AppColors.borderGrey),
                                   ),
                                   child: Center(
                                     child: Text(
                                       loc.tr('no_active_campaigns'),
-                                      style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
+                                      style: const TextStyle(
+                                          color: AppColors.darkTextSecondary,
+                                          fontSize: 13),
                                     ),
                                   ),
                                 )
                               : ListView.builder(
                                   scrollDirection: Axis.horizontal,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
                                   itemCount: campaigns.length,
                                   itemBuilder: (ctx, idx) {
                                     final campaign = campaigns[idx];
@@ -787,7 +872,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     _buildSectionHeader(loc.isArabic ? 'الفئات' : 'Categories'),
                     CategoryFilterPills(
                       selectedCategory: feedProvider.selectedCategory,
-                      onCategorySelected: (cat) => feedProvider.selectCategory(cat),
+                      onCategorySelected: (cat) =>
+                          feedProvider.selectCategory(cat),
                     ),
                     const SizedBox(height: 18),
 
@@ -797,7 +883,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                         ? const Center(
                             child: Padding(
                               padding: EdgeInsets.all(40),
-                              child: CircularProgressIndicator(color: AppColors.darkAmberAccent),
+                              child: CircularProgressIndicator(
+                                  color: AppColors.darkAmberAccent),
                             ),
                           )
                         : offers.isEmpty
@@ -806,12 +893,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   padding: const EdgeInsets.all(24),
                                   child: Text(
                                     loc.tr('no_active_offers'),
-                                    style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
+                                    style: const TextStyle(
+                                        color: AppColors.darkTextSecondary,
+                                        fontSize: 13),
                                   ),
                                 ),
                               )
                             : Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 child: ListView.builder(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
@@ -820,7 +910,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                     final offer = offers[index];
                                     return OfferCard(
                                       offer: offer,
-                                      onClaim: () => _claimOffer(context, offer),
+                                      onClaim: () =>
+                                          _claimOffer(context, offer),
                                     );
                                   },
                                 ),
@@ -865,28 +956,40 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.black38,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.local_fire_department_rounded, color: AppColors.darkAmberAccent, size: 14),
+                      Icon(Icons.local_fire_department_rounded,
+                          color: AppColors.darkAmberAccent, size: 14),
                       SizedBox(width: 4),
-                      Text('حملة نشطة', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      Text('حملة نشطة',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
                 Text(
                   campaign.discountBadge,
-                  style: const TextStyle(color: AppColors.darkAmberAccent, fontWeight: FontWeight.w900, fontSize: 12),
+                  style: const TextStyle(
+                      color: AppColors.darkAmberAccent,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12),
                 ),
               ],
             ),
             Text(
               campaign.title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -901,14 +1004,18 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
                     'احجز الآن',
-                    style: TextStyle(color: AppColors.darkSlateSurface, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: AppColors.darkSlateSurface,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -931,7 +1038,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
         final stores = feedProvider.stores.where((store) {
           if (_storesSearchQuery.isEmpty) return true;
           final q = _storesSearchQuery.toLowerCase();
-          final name = (store['store_name'] ?? store['name'] ?? '').toString().toLowerCase();
+          final name = (store['store_name'] ?? store['name'] ?? '')
+              .toString()
+              .toLowerCase();
           final addr = (store['address'] ?? '').toString().toLowerCase();
           return name.contains(q) || addr.contains(q);
         }).toList();
@@ -962,7 +1071,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                 color: AppColors.darkAmberAccent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.storefront_rounded, color: AppColors.darkSlateSurface, size: 22),
+                              child: const Icon(Icons.storefront_rounded,
+                                  color: AppColors.darkSlateSurface, size: 22),
                             ),
                             const SizedBox(width: 10),
                             Text(
@@ -970,15 +1080,20 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               style: TextStyle(
                                 fontSize: 19,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : AppColors.textPrimary,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
                               ),
                             ),
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkSlateCard : AppColors.primaryAmberLight,
+                            color: isDark
+                                ? AppColors.darkSlateCard
+                                : AppColors.primaryAmberLight,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1000,20 +1115,34 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       decoration: BoxDecoration(
                         color: isDark ? AppColors.darkSlateCard : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                        border: Border.all(
+                            color: isDark
+                                ? AppColors.darkSlateBorder
+                                : AppColors.borderGrey),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_on_rounded, color: AppColors.darkAmberAccent, size: 20),
+                          const Icon(Icons.location_on_rounded,
+                              color: AppColors.darkAmberAccent, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: TextField(
                               controller: _storesSearchController,
-                              style: TextStyle(color: isDark ? Colors.white : AppColors.textPrimary, fontSize: 13),
+                              style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.textPrimary,
+                                  fontSize: 13),
                               decoration: InputDecoration(
-                                hintText: loc.isArabic ? 'ابحث عن متجر بالاسم أو المنطقة...' : 'Search stores by name or location...',
-                                hintStyle: TextStyle(color: isDark ? AppColors.darkTextSecondary : AppColors.textMuted, fontSize: 13),
+                                hintText: loc.isArabic
+                                    ? 'ابحث عن متجر بالاسم أو المنطقة...'
+                                    : 'Search stores by name or location...',
+                                hintStyle: TextStyle(
+                                    color: isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textMuted,
+                                    fontSize: 13),
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,
@@ -1046,21 +1175,28 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(color: AppColors.darkAmberAccent),
+                          child: CircularProgressIndicator(
+                              color: AppColors.darkAmberAccent),
                         ),
                       )
                     else if (stores.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSlateCard : Colors.white,
+                          color:
+                              isDark ? AppColors.darkSlateCard : Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                          border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkSlateBorder
+                                  : AppColors.borderGrey),
                         ),
                         child: Center(
                           child: Text(
                             loc.tr('no_stores_found'),
-                            style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 14),
+                            style: const TextStyle(
+                                color: AppColors.darkTextSecondary,
+                                fontSize: 14),
                           ),
                         ),
                       )
@@ -1071,19 +1207,27 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                         itemCount: stores.length,
                         itemBuilder: (context, index) {
                           final store = stores[index];
-                          final name = store['store_name'] ?? store['name'] ?? 'متجر كانديلا';
+                          final name = store['store_name'] ??
+                              store['name'] ??
+                              'متجر كانديلا';
                           final address = store['address'] ?? 'طرابلس، ليبيا';
                           final distance = store['distance'] ?? '1.2 km away';
-                          final openHours = store['open_hours'] ?? '9:00 AM - 11:00 PM';
+                          final openHours =
+                              store['open_hours'] ?? '9:00 AM - 11:00 PM';
                           final rating = store['rating'] ?? 4.9;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 14),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkSlateCard : Colors.white,
+                              color: isDark
+                                  ? AppColors.darkSlateCard
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                              border: Border.all(
+                                  color: isDark
+                                      ? AppColors.darkSlateBorder
+                                      : AppColors.borderGrey),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.04),
@@ -1099,9 +1243,13 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   children: [
                                     CircleAvatar(
                                       radius: 24,
-                                      backgroundColor: isDark ? AppColors.darkSlateSurface : AppColors.primaryAmberLight,
+                                      backgroundColor: isDark
+                                          ? AppColors.darkSlateSurface
+                                          : AppColors.primaryAmberLight,
                                       child: Text(
-                                        name.isNotEmpty ? name[0].toUpperCase() : 'S',
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : 'S',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 18,
@@ -1112,26 +1260,37 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                     const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             name,
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
-                                              color: isDark ? Colors.white : AppColors.textPrimary,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppColors.textPrimary,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
                                           Row(
                                             children: [
-                                              const Icon(Icons.location_on_rounded, size: 14, color: AppColors.darkAmberAccent),
+                                              const Icon(
+                                                  Icons.location_on_rounded,
+                                                  size: 14,
+                                                  color: AppColors
+                                                      .darkAmberAccent),
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
                                                   address,
-                                                  style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppColors
+                                                          .darkTextSecondary),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
@@ -1140,14 +1299,18 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                       ),
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: AppColors.darkAmberAccent.withValues(alpha: 0.15),
+                                        color: AppColors.darkAmberAccent
+                                            .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.star_rounded, color: AppColors.darkAmberAccent, size: 14),
+                                          const Icon(Icons.star_rounded,
+                                              color: AppColors.darkAmberAccent,
+                                              size: 14),
                                           const SizedBox(width: 3),
                                           Text(
                                             '$rating',
@@ -1163,14 +1326,18 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                const Divider(height: 1, color: AppColors.borderGrey),
+                                const Divider(
+                                    height: 1, color: AppColors.borderGrey),
                                 const SizedBox(height: 12),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Row(
                                       children: [
-                                        const Icon(Icons.near_me_rounded, size: 14, color: AppColors.successGreen),
+                                        const Icon(Icons.near_me_rounded,
+                                            size: 14,
+                                            color: AppColors.successGreen),
                                         const SizedBox(width: 4),
                                         Text(
                                           distance,
@@ -1181,26 +1348,41 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                           ),
                                         ),
                                         const SizedBox(width: 12),
-                                        const Icon(Icons.access_time_rounded, size: 14, color: AppColors.darkTextSecondary),
+                                        const Icon(Icons.access_time_rounded,
+                                            size: 14,
+                                            color: AppColors.darkTextSecondary),
                                         const SizedBox(width: 4),
                                         Text(
                                           openHours,
-                                          style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 11.5),
+                                          style: const TextStyle(
+                                              color:
+                                                  AppColors.darkTextSecondary,
+                                              fontSize: 11.5),
                                         ),
                                       ],
                                     ),
                                     ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.darkAmberAccent,
-                                        foregroundColor: AppColors.darkSlateSurface,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        backgroundColor:
+                                            AppColors.darkAmberAccent,
+                                        foregroundColor:
+                                            AppColors.darkSlateSurface,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10)),
                                       ),
-                                      onPressed: () => _showStoreCouponsModal(context, store),
-                                      icon: const Icon(Icons.local_offer_rounded, size: 14),
+                                      onPressed: () => _showStoreCouponsModal(
+                                          context, store),
+                                      icon: const Icon(
+                                          Icons.local_offer_rounded,
+                                          size: 14),
                                       label: Text(
                                         loc.tr('view_offers'),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11.5),
                                       ),
                                     ),
                                   ],
@@ -1263,7 +1445,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                 color: AppColors.darkAmberAccent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.confirmation_number_rounded, color: AppColors.darkSlateSurface, size: 22),
+                              child: const Icon(
+                                  Icons.confirmation_number_rounded,
+                                  color: AppColors.darkSlateSurface,
+                                  size: 22),
                             ),
                             const SizedBox(width: 10),
                             Text(
@@ -1271,15 +1456,19 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : AppColors.textPrimary,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
                               ),
                             ),
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.darkAmberAccent.withValues(alpha: 0.15),
+                            color: AppColors.darkAmberAccent
+                                .withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1301,13 +1490,19 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       decoration: BoxDecoration(
                         color: isDark ? AppColors.darkSlateCard : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                        border: Border.all(
+                            color: isDark
+                                ? AppColors.darkSlateBorder
+                                : AppColors.borderGrey),
                       ),
                       child: Row(
                         children: [
-                          _buildWalletSubTabPill(0, '${loc.tr('tab_active')} (${walletProvider.activeCoupons.length})'),
-                          _buildWalletSubTabPill(1, '${loc.tr('tab_used')} (${walletProvider.usedCoupons.length})'),
-                          _buildWalletSubTabPill(2, '${loc.tr('tab_expired')} (${walletProvider.expiredCoupons.length})'),
+                          _buildWalletSubTabPill(0,
+                              '${loc.tr('tab_active')} (${walletProvider.activeCoupons.length})'),
+                          _buildWalletSubTabPill(1,
+                              '${loc.tr('tab_used')} (${walletProvider.usedCoupons.length})'),
+                          _buildWalletSubTabPill(2,
+                              '${loc.tr('tab_expired')} (${walletProvider.expiredCoupons.length})'),
                         ],
                       ),
                     ),
@@ -1318,25 +1513,33 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(color: AppColors.darkAmberAccent),
+                          child: CircularProgressIndicator(
+                              color: AppColors.darkAmberAccent),
                         ),
                       )
                     else if (currentList.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(36),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSlateCard : Colors.white,
+                          color:
+                              isDark ? AppColors.darkSlateCard : Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                          border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkSlateBorder
+                                  : AppColors.borderGrey),
                         ),
                         child: Center(
                           child: Column(
                             children: [
-                              const Icon(Icons.confirmation_number_outlined, color: AppColors.darkTextSecondary, size: 48),
+                              const Icon(Icons.confirmation_number_outlined,
+                                  color: AppColors.darkTextSecondary, size: 48),
                               const SizedBox(height: 10),
                               Text(
                                 loc.tr('no_coupons_in_tab'),
-                                style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
+                                style: const TextStyle(
+                                    color: AppColors.darkTextSecondary,
+                                    fontSize: 13),
                               ),
                             ],
                           ),
@@ -1356,12 +1559,17 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkSlateCard : Colors.white,
+                              color: isDark
+                                  ? AppColors.darkSlateCard
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isActive
-                                    ? AppColors.darkAmberAccent.withValues(alpha: 0.5)
-                                    : (isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                                    ? AppColors.darkAmberAccent
+                                        .withValues(alpha: 0.5)
+                                    : (isDark
+                                        ? AppColors.darkSlateBorder
+                                        : AppColors.borderGrey),
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -1375,31 +1583,50 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        coupon['store_name'] ?? coupon['store'] ?? 'Candela Partner Store',
+                                        coupon['store_name'] ??
+                                            coupon['store'] ??
+                                            'Candela Partner Store',
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
-                                          color: isDark ? Colors.white : AppColors.textPrimary,
+                                          color: isDark
+                                              ? Colors.white
+                                              : AppColors.textPrimary,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
                                         color: isActive
-                                            ? AppColors.successGreen.withValues(alpha: 0.15)
-                                            : (isUsed ? Colors.grey.withValues(alpha: 0.2) : AppColors.errorRed.withValues(alpha: 0.15)),
+                                            ? AppColors.successGreen
+                                                .withValues(alpha: 0.15)
+                                            : (isUsed
+                                                ? Colors.grey
+                                                    .withValues(alpha: 0.2)
+                                                : AppColors.errorRed
+                                                    .withValues(alpha: 0.15)),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        isActive ? loc.tr('tab_active') : (isUsed ? loc.tr('tab_used') : loc.tr('tab_expired')),
+                                        isActive
+                                            ? loc.tr('tab_active')
+                                            : (isUsed
+                                                ? loc.tr('tab_used')
+                                                : loc.tr('tab_expired')),
                                         style: TextStyle(
-                                          color: isActive ? AppColors.successGreen : (isUsed ? Colors.grey : AppColors.errorRed),
+                                          color: isActive
+                                              ? AppColors.successGreen
+                                              : (isUsed
+                                                  ? Colors.grey
+                                                  : AppColors.errorRed),
                                           fontWeight: FontWeight.bold,
                                           fontSize: 11,
                                         ),
@@ -1413,16 +1640,21 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.white70 : AppColors.textPrimary,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${loc.tr('expires_at')} ${coupon['expires'] ?? '2026-12-31'}',
-                                      style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 11.5),
+                                      style: const TextStyle(
+                                          color: AppColors.darkTextSecondary,
+                                          fontSize: 11.5),
                                     ),
                                     if (coupon['code'] != null)
                                       Text(
@@ -1439,17 +1671,25 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   const SizedBox(height: 14),
                                   ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.darkAmberAccent,
-                                      foregroundColor: AppColors.darkSlateSurface,
+                                      backgroundColor:
+                                          AppColors.darkAmberAccent,
+                                      foregroundColor:
+                                          AppColors.darkSlateSurface,
                                       minimumSize: const Size.fromHeight(42),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
                                     ),
-                                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                                    icon: const Icon(Icons.qr_code_2_rounded,
+                                        size: 18),
                                     label: Text(
                                       loc.tr('show_qr_code'),
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13),
                                     ),
-                                    onPressed: () => _openQrModalSheet(initialCoupon: coupon),
+                                    onPressed: () => _openQrModalSheet(
+                                        initialCoupon: coupon),
                                   ),
                                 ],
                               ],
@@ -1484,7 +1724,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? AppColors.darkSlateSurface : (isDark ? Colors.white70 : AppColors.textPrimary),
+              color: isSelected
+                  ? AppColors.darkSlateSurface
+                  : (isDark ? Colors.white70 : AppColors.textPrimary),
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
@@ -1519,7 +1761,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSlateCard : Colors.white,
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                  border: Border.all(
+                      color: isDark
+                          ? AppColors.darkSlateBorder
+                          : AppColors.borderGrey),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -1534,8 +1779,13 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       radius: 30,
                       backgroundColor: AppColors.darkAmberAccent,
                       child: Text(
-                        user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.darkSlateSurface),
+                        user?.name.isNotEmpty == true
+                            ? user!.name[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.darkSlateSurface),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1548,23 +1798,30 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : AppColors.textPrimary,
+                              color:
+                                  isDark ? Colors.white : AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             user?.email ?? user?.phone ?? 'user@candela.app',
-                            style: const TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
+                            style: const TextStyle(
+                                color: AppColors.darkTextSecondary,
+                                fontSize: 13),
                           ),
                           const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppColors.darkAmberAccent.withValues(alpha: 0.15),
+                              color: AppColors.darkAmberAccent
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              points >= 500 ? loc.tr('tier_gold') : loc.tr('tier_silver'),
+                              points >= 500
+                                  ? loc.tr('tier_gold')
+                                  : loc.tr('tier_silver'),
                               style: const TextStyle(
                                 color: AppColors.darkAmberAccent,
                                 fontWeight: FontWeight.bold,
@@ -1607,19 +1864,27 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       children: [
                         Text(
                           loc.tr('loyalty_center'),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15),
                         ),
-                        const Icon(Icons.star_rounded, color: Colors.white, size: 24),
+                        const Icon(Icons.star_rounded,
+                            color: Colors.white, size: 24),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Text(
                       '$points',
-                      style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900),
                     ),
                     Text(
                       loc.tr('candela_points'),
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     const SizedBox(height: 12),
                     ClipRRect(
@@ -1627,7 +1892,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       child: LinearProgressIndicator(
                         value: (points / 500.0).clamp(0.0, 1.0),
                         backgroundColor: Colors.white30,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.white),
                         minHeight: 6,
                       ),
                     ),
@@ -1637,7 +1903,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               const SizedBox(height: 20),
 
               // Profile & Security Actions
-              _buildSectionHeader(loc.isArabic ? 'إعدادات الحساب والأمان' : 'Account & Security Settings'),
+              _buildSectionHeader(loc.isArabic
+                  ? 'إعدادات الحساب والأمان'
+                  : 'Account & Security Settings'),
               _buildSettingsTile(
                 icon: Icons.edit_note_rounded,
                 title: loc.tr('edit_profile'),
@@ -1651,29 +1919,36 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
 
               const SizedBox(height: 16),
               // App Preferences
-              _buildSectionHeader(loc.isArabic ? 'تفضيلات التطبيق' : 'App Preferences'),
+              _buildSectionHeader(
+                  loc.isArabic ? 'تفضيلات التطبيق' : 'App Preferences'),
               // Dark Mode Toggle
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSlateCard : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                  border: Border.all(
+                      color: isDark
+                          ? AppColors.darkSlateBorder
+                          : AppColors.borderGrey),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.dark_mode_rounded, color: AppColors.darkAmberAccent, size: 20),
+                        Icon(Icons.dark_mode_rounded,
+                            color: AppColors.darkAmberAccent, size: 20),
                         const SizedBox(width: 12),
                         Text(
                           loc.tr('dark_mode'),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : AppColors.textPrimary,
+                            color:
+                                isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -1690,25 +1965,31 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               // Language Switcher
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSlateCard : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+                  border: Border.all(
+                      color: isDark
+                          ? AppColors.darkSlateBorder
+                          : AppColors.borderGrey),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.translate_rounded, color: AppColors.darkAmberAccent, size: 20),
+                        Icon(Icons.translate_rounded,
+                            color: AppColors.darkAmberAccent, size: 20),
                         const SizedBox(width: 12),
                         Text(
                           loc.tr('language'),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : AppColors.textPrimary,
+                            color:
+                                isDark ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -1716,15 +1997,20 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     GestureDetector(
                       onTap: () => localeProvider.toggleLocale(),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: AppColors.darkAmberAccent.withValues(alpha: 0.15),
+                          color:
+                              AppColors.darkAmberAccent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.darkAmberAccent),
                         ),
                         child: Text(
                           localeProvider.isArabic ? 'English' : 'العربية',
-                          style: const TextStyle(color: AppColors.darkAmberAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                          style: const TextStyle(
+                              color: AppColors.darkAmberAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12),
                         ),
                       ),
                     ),
@@ -1780,10 +2066,12 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSlateCard : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
+        border: Border.all(
+            color: isDark ? AppColors.darkSlateBorder : AppColors.borderGrey),
       ),
       child: ListTile(
-        leading: Icon(icon, color: color ?? AppColors.darkAmberAccent, size: 22),
+        leading:
+            Icon(icon, color: color ?? AppColors.darkAmberAccent, size: 22),
         title: Text(
           title,
           style: TextStyle(
@@ -1792,7 +2080,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
             fontSize: 14,
           ),
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white38 : Colors.black38),
+        trailing: Icon(Icons.arrow_forward_ios_rounded,
+            size: 14, color: isDark ? Colors.white38 : Colors.black38),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -1842,7 +2131,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
         return Consumer<CustomerFeedProvider>(
           builder: (context, feedProvider, _) {
             final offers = feedProvider.offers
-                .where((o) => o.campaignId == campaign.id || o.storeName == campaign.storeName)
+                .where((o) =>
+                    o.campaignId == campaign.id ||
+                    o.storeName == campaign.storeName)
                 .toList();
 
             return Container(
@@ -1859,24 +2150,33 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     child: Container(
                       width: 40,
                       height: 4,
-                      decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)),
+                      decoration: BoxDecoration(
+                          color: Colors.white30,
+                          borderRadius: BorderRadius.circular(2)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     campaign.title,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     campaign.storeName,
-                    style: const TextStyle(color: AppColors.darkAmberAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: AppColors.darkAmberAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: offers.isEmpty
                         ? const Center(
-                            child: Text('لا توجد عروض مخصصة لهذه الحملة حالياً', style: TextStyle(color: Colors.white60)),
+                            child: Text('لا توجد عروض مخصصة لهذه الحملة حالياً',
+                                style: TextStyle(color: Colors.white60)),
                           )
                         : ListView.builder(
                             itemCount: offers.length,
@@ -1916,7 +2216,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
         return Consumer<CustomerFeedProvider>(
           builder: (context, feedProvider, _) {
             final storeOffers = feedProvider.offers
-                .where((o) => o.storeName.toLowerCase() == storeName.toString().toLowerCase())
+                .where((o) =>
+                    o.storeName.toLowerCase() ==
+                    storeName.toString().toLowerCase())
                 .toList();
 
             return Container(
@@ -1933,7 +2235,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                     child: Container(
                       width: 40,
                       height: 4,
-                      decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)),
+                      decoration: BoxDecoration(
+                          color: Colors.white30,
+                          borderRadius: BorderRadius.circular(2)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1945,7 +2249,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           color: AppColors.darkAmberAccent,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.storefront_rounded, color: AppColors.darkSlateSurface, size: 24),
+                        child: const Icon(Icons.storefront_rounded,
+                            color: AppColors.darkSlateSurface, size: 24),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1954,11 +2259,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           children: [
                             Text(
                               storeName,
-                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold),
                             ),
                             Text(
                               address,
-                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -1969,13 +2278,19 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   const SizedBox(height: 20),
                   const Text(
                     'كوبونات وعروض المتجر المتاحة',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
                     child: storeOffers.isEmpty
                         ? const Center(
-                            child: Text('لا توجد كوبونات مخصصة لهذا المتجر حالياً.', style: TextStyle(color: Colors.white60, fontSize: 13)),
+                            child: Text(
+                                'لا توجد كوبونات مخصصة لهذا المتجر حالياً.',
+                                style: TextStyle(
+                                    color: Colors.white60, fontSize: 13)),
                           )
                         : ListView.builder(
                             itemCount: storeOffers.length,

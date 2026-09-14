@@ -7,7 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 /// 1. 🏠 Home / استكشف (Explore)
 /// 2. 🏪 Stores / قريب منك (Near You)
 /// 3. 🎟️ Center Floating QR Action Button
-/// 4. 👛 Wallet / العروض
+/// 4. 👛 Wallet / المحفظة
 /// 5. 👤 Profile / القائمة
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -99,10 +99,10 @@ class CustomBottomNavBar extends StatelessWidget {
                   ),
                 ),
 
-                // 4. Wallet (العروض)
+                // 4. Wallet (المحفظة)
                 _buildNavItem(
                   index: 3,
-                  icon: Icons.confirmation_number_rounded,
+                  icon: Icons.wallet,
                   label: loc.tr('nav_wallet'),
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,

@@ -12,7 +12,8 @@ class AppLocalizations {
   }
 
   bool get isArabic => locale.languageCode == 'ar';
-  TextDirection get textDirection => isArabic ? TextDirection.rtl : TextDirection.ltr;
+  TextDirection get textDirection =>
+      isArabic ? TextDirection.rtl : TextDirection.ltr;
 
   static final Map<String, Map<String, String>> _localizedValues = {
     'ar': {
@@ -20,7 +21,7 @@ class AppLocalizations {
       'nav_explore': 'استكشف',
       'nav_stores': 'قريب منك',
       'nav_qr': 'كود الاستخدام',
-      'nav_wallet': 'العروض',
+      'nav_wallet': 'المحفظة',
       'nav_profile': 'القائمة',
       'merchant_dashboard': 'الرئيسية',
       'merchant_offers': 'إدارة العروض',
@@ -52,13 +53,15 @@ class AppLocalizations {
 
       // QR Pass & Bottom Sheet
       'qr_pass_title': 'رمز الاستخدام الفوري',
-      'qr_pass_subtitle': 'أظهر هذا الرمز عند نقطة البيع بالمتجر. يتجدد الرمز تلقائياً كل 45 ثانية لمنع الاحتيال.',
+      'qr_pass_subtitle':
+          'أظهر هذا الرمز عند نقطة البيع بالمتجر. يتجدد الرمز تلقائياً كل 45 ثانية لمنع الاحتيال.',
       'qr_anti_fraud_badge': 'رمز مشفر ومحمي ضد لقطات الشاشة (HMAC-SHA256)',
       'qr_refreshing_in': 'يتجدد الكود خلال',
       'seconds': 'ثانية',
       'qr_refresh_now': 'تحديث الرمز الآن',
       'no_active_coupon_selected': 'لا يوجد كوبون نشط محدد',
-      'select_coupon_from_wallet': 'اختر كوبوناً نشطاً من محفظتك لإظهار كود الاستخدام.',
+      'select_coupon_from_wallet':
+          'اختر كوبوناً نشطاً من محفظتك لإظهار كود الاستخدام.',
 
       // Wallet
       'wallet_title': 'محفظة الكوبونات',
@@ -116,7 +119,8 @@ class AppLocalizations {
       'filter_branch': 'تصفية حسب الفرع',
       'all_branches': 'جميع الفروع',
       'scan_qr_title': 'مسح رمز الاستخدام QR',
-      'scan_instructions': 'وجّه الكاميرا نحو كود العميل للتحقق الفوري والخصم الآلي.',
+      'scan_instructions':
+          'وجّه الكاميرا نحو كود العميل للتحقق الفوري والخصم الآلي.',
       'enter_code_manually': 'أو أدخل كود الكوبون يدوياً',
       'verify_button': 'تحقق واخصم',
       'verification_success': 'تم التحقق والاسترداد بنجاح!',
@@ -159,13 +163,15 @@ class AppLocalizations {
 
       // QR Pass & Bottom Sheet
       'qr_pass_title': 'Dynamic Single-Use Pass',
-      'qr_pass_subtitle': 'Present this pass at merchant checkout. Token auto-refreshes every 45 seconds to prevent screenshot fraud.',
+      'qr_pass_subtitle':
+          'Present this pass at merchant checkout. Token auto-refreshes every 45 seconds to prevent screenshot fraud.',
       'qr_anti_fraud_badge': 'HMAC-SHA256 Encrypted & Anti-Fraud Protected',
       'qr_refreshing_in': 'Auto-refreshing in',
       'seconds': 's',
       'qr_refresh_now': 'Refresh Pass Now',
       'no_active_coupon_selected': 'No Active Coupon Selected',
-      'select_coupon_from_wallet': 'Select an active coupon from your wallet to generate QR pass.',
+      'select_coupon_from_wallet':
+          'Select an active coupon from your wallet to generate QR pass.',
 
       // Wallet
       'wallet_title': 'Coupon Wallet',
@@ -223,7 +229,8 @@ class AppLocalizations {
       'filter_branch': 'Filter by Branch',
       'all_branches': 'All Branches',
       'scan_qr_title': 'Scan Customer QR Pass',
-      'scan_instructions': 'Point the camera at customer QR pass for instant atomic redemption.',
+      'scan_instructions':
+          'Point the camera at customer QR pass for instant atomic redemption.',
       'enter_code_manually': 'Or enter coupon token manually',
       'verify_button': 'Verify & Redeem',
       'verification_success': 'Verified and Redeemed Successfully!',
