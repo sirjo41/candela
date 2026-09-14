@@ -28,6 +28,38 @@ class CustomerController extends Controller
         return asset('storage/' . ltrim($logo, '/'));
     }
 
+    private function formatCouponDiscount(?Coupon $coupon): ?string
+    {
+        if (! $coupon || $coupon->discount_value === null) {
+            return null;
+        }
+
+        $value = rtrim(rtrim(number_format((float) $coupon->discount_value, 2, '.', ''), '0'), '.');
+        $type = (string) $coupon->discount_type;
+
+        if (in_array($type, ['fixed', 'fixed_amount'], true)) {
+            return "وفر حتى {$value} د.ل";
+        }
+
+        return "وفر حتى {$value}%";
+    }
+
+    /**
+     * Public support channels. Empty values are omitted so the app never shows fake contacts.
+     */
+    public function supportContact(): JsonResponse
+    {
+        $whatsapp = config('services.candela.support_whatsapp');
+        $phone = config('services.candela.support_phone');
+        $email = config('services.candela.support_email');
+
+        return response()->json([
+            'whatsapp' => filled($whatsapp) ? $whatsapp : null,
+            'phone' => filled($phone) ? $phone : null,
+            'email' => filled($email) ? $email : null,
+        ]);
+    }
+
     /**
      * Get list of merchant locations and branch addresses with optional Haversine distance sorting.
      */
@@ -53,10 +85,8 @@ class CustomerController extends Controller
             $primaryBranch = $store->branches->first();
             $logoUrl = $this->formatLogoUrl($store->logo);
 
-            $distanceText = '1.2 km away';
-            if ($primaryBranch && isset($primaryBranch->distance_km)) {
-                $distanceText = number_format((float) $primaryBranch->distance_km, 1) . ' km away';
-            } elseif ($lat !== null && $lng !== null && $primaryBranch && $primaryBranch->latitude && $primaryBranch->longitude) {
+            $distanceKm = $primaryBranch?->distance_km ?? null;
+            if ($distanceKm === null && $lat !== null && $lng !== null && $primaryBranch && $primaryBranch->latitude && $primaryBranch->longitude) {
                 $earthRadius = 6371;
                 $dLat = deg2rad((float) $primaryBranch->latitude - (float) $lat);
                 $dLon = deg2rad((float) $primaryBranch->longitude - (float) $lng);
@@ -64,22 +94,23 @@ class CustomerController extends Controller
                     cos(deg2rad((float) $lat)) * cos(deg2rad((float) $primaryBranch->latitude)) *
                     sin($dLon / 2) * sin($dLon / 2);
                 $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-                $km = $earthRadius * $c;
-                $distanceText = number_format($km, 1) . ' km away';
+                $distanceKm = $earthRadius * $c;
             }
+
+            $address = $primaryBranch?->address ?: $store->address;
 
             return [
                 'id' => $store->id,
-                'branch_id' => $primaryBranch ? "BRANCH-00{$primaryBranch->id}" : "BRANCH-00{$store->id}",
+                'branch_id' => $primaryBranch?->id,
                 'name' => $store->name,
                 'store_name' => $store->name,
                 'logo' => $logoUrl,
                 'store_logo_url' => $logoUrl,
-                'address' => $primaryBranch ? $primaryBranch->address : 'Tripoli, Libya',
-                'distance' => $distanceText,
-                'distance_km' => $primaryBranch->distance_km ?? null,
-                'open_hours' => '9:00 AM - 11:00 PM',
-                'rating' => 4.9,
+                'address' => $address,
+                'distance' => $distanceKm !== null ? number_format((float) $distanceKm, 1) . ' km away' : null,
+                'distance_km' => $distanceKm !== null ? round((float) $distanceKm, 2) : null,
+                'open_hours' => $primaryBranch?->open_hours ?? $store->open_hours ?? null,
+                'rating' => $store->rating,
                 'branches' => $store->branches,
                 'merchants' => $store->merchants->map(fn ($m) => [
                     'id' => $m->id,
@@ -144,7 +175,7 @@ class CustomerController extends Controller
         if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
-        $points = (int) ($user ? ($user->loyalty_points ?? 250) : 250);
+        $points = (int) ($user->loyalty_points ?? 0);
         $tier = $points >= 500 ? 'المستوى الذهبي' : 'المستوى الفضي';
         $pointsNeeded = $points >= 500 ? 0 : (500 - $points);
 
@@ -229,18 +260,25 @@ class CustomerController extends Controller
             $isExpired = $claimed->status === 'expired' || $coupon->status === 'expired' || ($coupon->expires_at && \Illuminate\Support\Carbon::parse($coupon->expires_at)->isPast());
             $store = $coupon->store;
             $logoUrl = $this->formatLogoUrl($store?->logo);
-            $storeName = $store?->name ?? 'Candela Partner Store';
+            $storeName = $store?->name;
+            $discount = $this->formatCouponDiscount($coupon);
 
             $formattedItem = [
                 'id' => $claimed->id,
                 'coupon_id' => $coupon->id,
-                'code' => $coupon->code ?? "CPN-{$coupon->id}",
-                'title' => $coupon->title ?? 'Special Savings Voucher',
+                'store_id' => $coupon->store_id,
+                'code' => $coupon->code,
+                'title' => $coupon->title,
                 'store' => $storeName,
                 'store_name' => $storeName,
                 'store_logo_url' => $logoUrl,
+                'discount' => $discount,
+                'discount_badge' => $discount,
+                'discount_type' => $coupon->discount_type,
+                'discount_value' => $coupon->discount_value !== null ? (float) $coupon->discount_value : null,
                 'status' => $isRedeemed ? 'used' : ($isExpired ? 'expired' : 'active'),
-                'expires' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : '2026-12-31',
+                'expires' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : null,
+                'expires_at' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : null,
                 'claimed_at' => $claimed->claimed_at ? \Illuminate\Support\Carbon::parse($claimed->claimed_at)->format('Y-m-d H:i') : null,
                 'redeemed_at' => $coupon->redeemed_at ?? $claimed->redeemed_at,
             ];
@@ -310,20 +348,21 @@ class CustomerController extends Controller
             $store = $primaryCoupon ? $primaryCoupon->store : null;
             $isClaimed = $primaryCoupon && in_array($primaryCoupon->id, $userClaimedCouponIds);
             $logoUrl = $this->formatLogoUrl($store?->logo);
-            $storeName = $store?->name ?? 'Candela Partner Store';
+            $storeName = $store?->name;
+            $discount = $this->formatCouponDiscount($primaryCoupon);
 
             $validUntil = $campaign->end_date
                 ? \Illuminate\Support\Carbon::parse($campaign->end_date)->format('Y-m-d')
                 : ($primaryCoupon && $primaryCoupon->expires_at
                     ? \Illuminate\Support\Carbon::parse($primaryCoupon->expires_at)->format('Y-m-d')
-                    : '2026-08-31');
+                    : null);
 
             return [
                 'id' => $campaign->id,
-                'coupon_id' => $primaryCoupon ? $primaryCoupon->id : $campaign->id,
+                'coupon_id' => $primaryCoupon?->id,
                 'title' => $campaign->title,
                 'description' => $campaign->description,
-                'discount' => $primaryCoupon ? ($primaryCoupon->discount_type === 'percentage' ? "وفر حتى {$primaryCoupon->discount_value}%" : "وفر حتى {$primaryCoupon->discount_value} د.ل") : 'وفر حتى 20%',
+                'discount' => $discount,
                 'store' => $storeName,
                 'store_name' => $storeName,
                 'store_logo_url' => $logoUrl,
@@ -382,7 +421,7 @@ class CustomerController extends Controller
                     'discount_type' => $coupon->discount_type,
                     'discount_value' => $coupon->discount_value,
                     'store_id' => $coupon->store_id,
-                    'store_name' => $store?->name ?? 'Candela Partner Store',
+                    'store_name' => $store?->name,
                     'store_logo_url' => $this->formatLogoUrl($store?->logo),
                     'expires_at' => $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : null,
                 ];
@@ -401,46 +440,28 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        // Locate Coupon by ID, offer_id, or campaign_id
         $coupon = Coupon::with('store')->find($id);
 
         if (! $coupon) {
             $campaign = Campaign::with('coupons.store')->find($id);
             if ($campaign && $campaign->coupons->isNotEmpty()) {
                 $coupon = $campaign->coupons->first();
-            } else {
-                $offer = \App\Models\Offer::with('store')->find($id);
-                if ($offer) {
-                    $coupon = Coupon::where('offer_id', $offer->id)->first();
-                    if (! $coupon) {
-                        $coupon = Coupon::create([
-                            'store_id' => $offer->store_id,
-                            'offer_id' => $offer->id,
-                            'title' => $offer->title,
-                            'code' => 'CPN-' . $offer->id . '-' . strtoupper(substr(md5(uniqid()), 0, 4)),
-                            'discount_type' => 'percentage',
-                            'discount_value' => $offer->discount_rate ?? 20,
-                            'redemption_fee' => $offer->redemption_fee ?? 5.00,
-                            'expires_at' => $offer->valid_until ?? now()->addDays(30),
-                            'is_active' => true,
-                            'status' => 'active',
-                        ]);
-                    }
-                } else {
-                    $store = Store::first();
-                    $coupon = Coupon::create([
-                        'store_id' => $store ? $store->id : 1,
-                        'campaign_id' => $id,
-                        'title' => 'Exclusive Promotional Coupon',
-                        'code' => 'CPN-' . strtoupper(substr(md5(uniqid()), 0, 8)),
-                        'discount_type' => 'percentage',
-                        'discount_value' => 20,
-                        'expires_at' => now()->addDays(30),
-                        'is_active' => true,
-                        'status' => 'active',
-                    ]);
-                }
             }
+        }
+
+        if (! $coupon) {
+            $offer = Offer::with('store')->find($id);
+            if ($offer) {
+                $coupon = Coupon::where('offer_id', $offer->id)->first();
+            }
+        }
+
+        if (! $coupon) {
+            return response()->json([
+                'success' => false,
+                'message' => 'العرض أو الكوبون غير موجود.',
+                'error_code' => 'RESOURCE_NOT_FOUND',
+            ], 404);
         }
 
         // Check if user already claimed this coupon or offer
@@ -481,8 +502,9 @@ class CustomerController extends Controller
 
         $store = $coupon->store;
         $logoUrl = $this->formatLogoUrl($store?->logo);
-        $storeName = $store?->name ?? 'Candela Partner Store';
-        $expiresFormatted = $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : '2026-08-31';
+        $storeName = $store?->name;
+        $expiresFormatted = $coupon->expires_at ? \Illuminate\Support\Carbon::parse($coupon->expires_at)->format('Y-m-d') : null;
+        $discount = $this->formatCouponDiscount($coupon);
 
         return response()->json([
             'success' => true,
@@ -496,7 +518,10 @@ class CustomerController extends Controller
                 'title' => $coupon->title,
                 'store' => $storeName,
                 'store_name' => $storeName,
+                'store_id' => $coupon->store_id,
                 'store_logo_url' => $logoUrl,
+                'discount' => $discount,
+                'discount_badge' => $discount,
                 'status' => 'claimed',
                 'expires' => $expiresFormatted,
                 'expires_at' => $expiresFormatted,
@@ -584,6 +609,14 @@ class CustomerController extends Controller
                 'message'    => 'هذا الكوبون منتهي الصلاحية.',
                 'error_code' => 'EXPIRED_COUPON',
                 'expires_at' => $coupon->expires_at?->toIso8601String(),
+            ], 422);
+        }
+
+        if ((int) $coupon->store_id !== (int) $store->id) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'هذا الكوبون غير صالح في هذا المتجر.',
+                'error_code' => 'STORE_MISMATCH',
             ], 422);
         }
 

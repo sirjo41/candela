@@ -110,20 +110,27 @@ test('customer can generate encrypted time-sensitive QR code payload', function 
         'expires_at' => now()->addDays(5),
     ]);
 
+    ClaimedCoupon::create([
+        'user_id' => $customer->id,
+        'coupon_id' => $coupon->id,
+        'status' => 'claimed',
+        'claimed_at' => now(),
+    ]);
+
     $response = $this->postJson('/api/v1/qr/generate', [
         'coupon_id' => $coupon->id,
-        'valid_seconds' => 120,
+        'valid_seconds' => 45,
     ]);
 
     $response->assertSuccessful()
         ->assertJsonStructure(['qr_code_hash', 'expires_at', 'valid_seconds']);
 
     $hash = $response->json('qr_code_hash');
-    $decrypted = json_decode(Crypt::decrypt($hash), true);
+    $decoded = json_decode(base64_decode($hash), true);
 
-    expect($decrypted['user_id'])->toBe($customer->id);
-    expect($decrypted['coupon_id'])->toBe($coupon->id);
-    expect($decrypted)->toHaveKey('expires_at');
+    expect($decoded['payload']['user_id'])->toBe($customer->id);
+    expect($decoded['payload']['coupon_id'])->toBe($coupon->id);
+    expect($decoded['payload'])->toHaveKey('expires_at');
 });
 
 test('merchant can validate valid QR code payload and execute atomic redemption', function () {

@@ -74,7 +74,7 @@ class OfferController extends Controller
     public function create(CreateOfferRequest $request): JsonResponse
     {
         $user = $request->user();
-        $store = $user->store ?? Store::find($user->store_id) ?? Store::first();
+        $store = $user->store ?? Store::find($user->store_id);
 
         if (! $store) {
             return response()->json([

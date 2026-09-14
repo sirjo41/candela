@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
     Route::get('customer/coupons', [CustomerController::class, 'coupons']);
     Route::get('customer/stores', [CustomerController::class, 'stores']);
     Route::get('notifications', [NotificationController::class, 'index']);
+    Route::get('support', [CustomerController::class, 'supportContact']);
 
     // 3. Authenticated Customer Endpoints
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {

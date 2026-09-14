@@ -22,13 +22,14 @@ class VerificationResult {
 class MerchantProvider extends ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
 
-  bool isMockMode = false;
   bool _isLoading = false;
   String? _errorMessage;
 
   // Merchant Store & Wallet State
-  String _storeName = 'متجري - فرع وسط البلد';
-  double _walletBalance = 500.00;
+  String _storeName = '';
+  double _walletBalance = 0;
+  double _creationFeeRate = 0;
+  double _redemptionFeeRate = 0;
   int _activeOffersCount = 0;
   int _totalRedemptions = 0;
   final List<dynamic> _recentRedemptions = [];
@@ -40,6 +41,8 @@ class MerchantProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get storeName => _storeName;
   double get walletBalance => _walletBalance;
+  double get creationFeeRate => _creationFeeRate;
+  double get redemptionFeeRate => _redemptionFeeRate;
   int get activeOffersCount => _activeOffersCount;
   int get totalRedemptions {
     if (_totalRedemptions > 0) return _totalRedemptions;
@@ -58,35 +61,26 @@ class MerchantProvider extends ChangeNotifier {
     fetchMerchantOffers();
   }
 
-  void toggleMockMode(bool value) {
-    isMockMode = value;
-    notifyListeners();
-  }
-
   /// Fetch Merchant Dashboard Metrics & Wallet Balance from Laravel DB
   Future<void> fetchDashboardMetrics() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    if (isMockMode) {
-      _walletBalance = 500.00;
-      _activeOffersCount = _merchantOffers.where((o) => o.status == 'active').length;
-      _totalRedemptions = _merchantOffers.fold(0, (sum, item) => sum + item.redemptionsCount);
-      _isLoading = false;
-      notifyListeners();
-      return;
-    }
-
     try {
       final response = await _apiClient.dio.get('/merchant/dashboard');
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
+        if (data['store'] is Map) {
+          _storeName = data['store']['name'] ?? _storeName;
+          _creationFeeRate = (data['store']['creation_fee_rate'] as num?)?.toDouble() ?? _creationFeeRate;
+          _redemptionFeeRate = (data['store']['redemption_fee_rate'] as num?)?.toDouble() ?? _redemptionFeeRate;
+          if (data['store']['balance'] != null) {
+            _walletBalance = (data['store']['balance'] as num).toDouble();
+          }
+        }
         if (data['wallet_balance'] != null) {
           _walletBalance = (data['wallet_balance'] as num).toDouble();
-        } else if (data['store'] != null && data['store']['balance'] != null) {
-          _storeName = data['store']['name'] ?? _storeName;
-          _walletBalance = (data['store']['balance'] as num).toDouble();
         }
         _activeOffersCount = data['active_coupons_count'] ?? data['active_offers_count'] ?? _activeOffersCount;
         _totalRedemptions = ((data['total_redemptions'] ?? data['dashboard']?['total_redemptions'] ?? data['todays_redemptions'] ?? _totalRedemptions) as num).toInt();
@@ -99,8 +93,6 @@ class MerchantProvider extends ChangeNotifier {
 
   /// Fetch Merchant Offers List strictly from Laravel MySQL DB
   Future<void> fetchMerchantOffers() async {
-    if (isMockMode) return;
-
     try {
       final response = await _apiClient.dio.get('/offers?include_inactive=1');
       if (response.statusCode == 200 && response.data != null) {

@@ -49,6 +49,7 @@ class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
   int _totalValiditySeconds = 45;
   int _remainingSeconds = 45;
   bool _isLoadingHash = false;
+  String? _hashError;
   Timer? _countdownTimer;
 
   @override
@@ -75,6 +76,8 @@ class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
     if (!mounted) return;
     setState(() {
       _isLoadingHash = true;
+      _hashError = null;
+      _qrCodeHash = null;
     });
 
     final couponId = coupon['coupon_id'] ?? coupon['id'];
@@ -93,29 +96,30 @@ class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
         final hash = data['qr_code_hash'] ?? data['qr_token'];
         final validSecs = (data['valid_seconds'] as num?)?.toInt() ?? 45;
 
+        if (hash == null || hash.toString().isEmpty) {
+          throw Exception('Missing QR hash from server');
+        }
+
         if (mounted) {
           setState(() {
-            _qrCodeHash = hash;
+            _qrCodeHash = hash.toString();
             _totalValiditySeconds = validSecs;
             _remainingSeconds = validSecs;
             _isLoadingHash = false;
+            _hashError = null;
           });
           _startCountdown();
           return;
         }
       }
-    } catch (_) {
-      // Fallback to time-stamped client token if server call drops
-      final tokenTimestamp = (DateTime.now().millisecondsSinceEpoch / 1000).floor();
-      final fallbackHash = 'CANDELA:${widget.userId}:${coupon['code'] ?? couponId}:$tokenTimestamp';
+    } catch (e) {
+      _countdownTimer?.cancel();
       if (mounted) {
         setState(() {
-          _qrCodeHash = fallbackHash;
-          _totalValiditySeconds = 45;
-          _remainingSeconds = 45;
+          _qrCodeHash = null;
           _isLoadingHash = false;
+          _hashError = 'تعذّر إنشاء رمز QR. تحقق من الاتصال وحاول مجدداً.';
         });
-        _startCountdown();
       }
     }
   }
@@ -384,14 +388,48 @@ class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
                                     ),
                                   ),
                                 )
-                              : QrImageView(
-                                  data: _qrCodeHash ?? 'CANDELA:${widget.userId}:${coupon['id']}',
-                                  version: QrVersions.auto,
-                                  size: 200.0,
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: AppColors.darkSlateSurface,
-                                  errorCorrectionLevel: QrErrorCorrectLevel.M,
-                                ),
+                              : _hashError != null
+                                  ? SizedBox(
+                                      width: 200,
+                                      height: 200,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.error_outline_rounded,
+                                            color: AppColors.errorRed,
+                                            size: 36,
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            _hashError!,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: AppColors.darkTextSecondary,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          TextButton.icon(
+                                            onPressed: _fetchLiveQrHash,
+                                            icon: const Icon(
+                                              Icons.refresh_rounded,
+                                              size: 16,
+                                            ),
+                                            label: Text(loc.tr('qr_refresh_now')),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : QrImageView(
+                                      data: _qrCodeHash!,
+                                      version: QrVersions.auto,
+                                      size: 200.0,
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: AppColors.darkSlateSurface,
+                                      errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                    ),
                         ),
                         const SizedBox(height: 14),
 

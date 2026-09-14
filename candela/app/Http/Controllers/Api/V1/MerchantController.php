@@ -21,14 +21,14 @@ class MerchantController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $store = $merchant->store ?? \App\Models\Store::find($merchant->store_id) ?? \App\Models\Store::first();
+        $store = $merchant->store ?? \App\Models\Store::find($merchant->store_id);
 
         if (! $store) {
-            $store = \App\Models\Store::create([
-                'name' => 'Candela Partner Store',
-                'balance' => 500.00,
-                'is_active' => true,
-            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم ربط حساب التاجر بمتجر.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
         }
 
         $storeId = $store->id;
@@ -141,7 +141,15 @@ class MerchantController extends Controller
             ], 401);
         }
 
-        $storeId = $merchant->store_id ?? $merchant->store?->id ?? 1;
+        $storeId = $merchant->store_id ?? $merchant->store?->id;
+
+        if (! $storeId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم ربط حساب التاجر بمتجر.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
+        }
 
         $query = Redemption::query()
             ->with([

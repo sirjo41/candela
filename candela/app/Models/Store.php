@@ -86,7 +86,7 @@ class Store extends Model
         }
 
         return $this->wallet()->create([
-            'balance' => $this->balance ?? 500.00,
+            'balance' => $this->balance ?? 0,
             'currency' => 'D.L',
             'status' => 'active',
         ]);

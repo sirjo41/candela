@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'candela' => [
+        'support_whatsapp' => env('CANDELA_SUPPORT_WHATSAPP'),
+        'support_phone' => env('CANDELA_SUPPORT_PHONE'),
+        'support_email' => env('CANDELA_SUPPORT_EMAIL'),
+    ],
+
 ];

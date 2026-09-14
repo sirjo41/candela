@@ -191,10 +191,27 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                       Provider.of<AuthProvider>(context, listen: false);
                   final walletProvider =
                       Provider.of<WalletProvider>(context, listen: false);
+                  final userId = auth.user?.id;
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('يجب تسجيل الدخول لعرض بطاقات المحفظة.'),
+                      ),
+                    );
+                    return;
+                  }
+                  if (walletProvider.activeCoupons.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('لا توجد كوبونات نشطة في محفظتك.'),
+                      ),
+                    );
+                    return;
+                  }
                   QrCouponBottomSheet.show(
                     context,
                     activeCoupons: walletProvider.activeCoupons,
-                    userId: auth.user?.id.toString() ?? 'USR-001',
+                    userId: userId.toString(),
                     initialCoupon: initialCoupon,
                   );
                 },

@@ -102,3 +102,33 @@ test('merchant dashboard and history endpoints return store metrics and logs', f
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.qr_code_hash', 'hash_test_123');
 });
+
+test('claiming a missing coupon returns not found instead of creating a dummy coupon', function () {
+    $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+
+    $this->actingAs($customer)
+        ->postJson('/api/v1/customer/coupons/999999/claim')
+        ->assertNotFound()
+        ->assertJsonPath('error_code', 'RESOURCE_NOT_FOUND');
+
+    expect(Coupon::count())->toBe(0);
+});
+
+test('stores list does not invent distance hours or ratings', function () {
+    $store = Store::factory()->create(['name' => 'No Dummy Store', 'is_active' => true]);
+
+    $response = $this->getJson('/api/v1/customer/stores');
+
+    $response->assertSuccessful();
+    $item = collect($response->json('data'))->firstWhere('id', $store->id);
+
+    expect($item['distance'])->toBeNull();
+    expect($item['open_hours'])->toBeNull();
+    expect($item['rating'])->toBeNull();
+});
+
+test('support contact endpoint omits empty channels', function () {
+    $this->getJson('/api/v1/support')
+        ->assertSuccessful()
+        ->assertJsonStructure(['whatsapp', 'phone', 'email']);
+});

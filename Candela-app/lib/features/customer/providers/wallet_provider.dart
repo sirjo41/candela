@@ -112,13 +112,12 @@ class WalletProvider extends ChangeNotifier {
 
   Future<bool> claimCoupon(dynamic item) async {
     final campaignId = item['id'] ?? item['coupon_id'];
-    final title = item['title'] ?? 'Promotional Discount';
-    final storeName = item['store_name'] ?? item['store'] ?? 'Candela Store';
-    final storeLogoUrl = item['store_logo_url'] ?? item['store_logo'];
-    final validUntil = item['valid_until'] ?? item['expires_at'] ?? '2026-08-31';
-    final discountText = item['discount'] ?? item['discount_badge'] ?? 'خصم ممتاز';
+    if (campaignId == null) {
+      _errorMessage = 'معرّف العرض غير صالح.';
+      notifyListeners();
+      return false;
+    }
 
-    // 1. Local Check if user already claimed this item
     if (isClaimed(campaignId)) {
       _errorMessage = 'لقد قمت بحجز هذا الكوبون مسبقاً (مسموح بحجز واحد فقط لكل عميل).';
       notifyListeners();
@@ -128,46 +127,40 @@ class WalletProvider extends ChangeNotifier {
     Response? res;
     try {
       res = await _apiClient.dio.post('/customer/campaigns/$campaignId/claim');
-    } catch (_) {
+    } on DioException catch (firstError) {
+      final alreadyClaimed = firstError.response?.statusCode == 400 ||
+          firstError.response?.data?['error_code'] == 'ALREADY_CLAIMED';
+      if (alreadyClaimed) {
+        _claimedIds.add(campaignId.toString());
+        _errorMessage = firstError.response?.data?['message'] ??
+            'لقد قمت بحجز هذا الكوبون مسبقاً (مسموح بحجز واحد فقط لكل عميل).';
+        notifyListeners();
+        return false;
+      }
       try {
         res = await _apiClient.dio.post('/customer/coupons/$campaignId/claim');
-      } catch (e) {
-        if (e is DioException && (e.response?.statusCode == 400 || e.response?.data?['error_code'] == 'ALREADY_CLAIMED')) {
-          _claimedIds.add(campaignId.toString());
-          _errorMessage = 'لقد قمت بحجز هذا الكوبون مسبقاً (مسموح بحجز واحد فقط لكل عميل).';
-          notifyListeners();
-          return false;
-        }
+      } on DioException catch (e) {
+        _errorMessage = e.response?.data?['message'] ?? 'فشل حجز الكوبون. حاول مرة أخرى.';
+        notifyListeners();
+        return false;
       }
     }
 
-    // Process claimed coupon data
-    Map<String, dynamic>? claimedData = res?.data?['claimed_coupon'];
-    
-    final newCoupon = {
-      'id': claimedData?['id'] ?? campaignId ?? DateTime.now().millisecondsSinceEpoch,
-      'coupon_id': claimedData?['coupon_id'] ?? campaignId,
-      'code': claimedData?['code'] ?? 'CPN-$campaignId',
-      'title': claimedData?['title'] ?? title,
-      'store': claimedData?['store'] ?? storeName,
-      'store_name': claimedData?['store_name'] ?? storeName,
-      'store_logo_url': claimedData?['store_logo_url'] ?? storeLogoUrl,
-      'discount': discountText,
-      'status': 'active',
-      'expires': claimedData?['expires'] ?? validUntil,
-      'claimed_at': DateTime.now().toString().substring(0, 16),
-    };
+    if (res == null || (res.statusCode != 200 && res.statusCode != 201) || res.data?['success'] == false) {
+      _errorMessage = res?.data?['message'] ?? 'فشل حجز الكوبون. حاول مرة أخرى.';
+      notifyListeners();
+      return false;
+    }
 
-    if (campaignId != null) _claimedIds.add(campaignId.toString());
-    if (newCoupon['code'] != null) _claimedIds.add(newCoupon['code'].toString());
+    final claimedData = res.data?['claimed_coupon'];
+    if (claimedData is Map) {
+      if (claimedData['id'] != null) _claimedIds.add(claimedData['id'].toString());
+      if (claimedData['coupon_id'] != null) _claimedIds.add(claimedData['coupon_id'].toString());
+      if (claimedData['code'] != null) _claimedIds.add(claimedData['code'].toString());
+    }
+    _claimedIds.add(campaignId.toString());
 
-    _activeCoupons.insert(0, newCoupon);
-    _saveToLocalCache();
-    notifyListeners();
-
-    // Sync with backend DB
-    fetchWallet();
-
+    await fetchWallet();
     return true;
   }
 

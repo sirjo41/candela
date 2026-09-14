@@ -52,23 +52,17 @@ class QrController extends Controller
             ], 422);
         }
 
-        // Get or create claim record
-        $claimed = ClaimedCoupon::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'coupon_id' => $coupon->id,
-            ],
-            [
-                'status' => 'claimed',
-                'claimed_at' => now(),
-            ]
-        );
+        $claimed = ClaimedCoupon::where('user_id', $user->id)
+            ->where('coupon_id', $coupon->id)
+            ->first();
 
-        if ($claimed->status === 'redeemed' || $coupon->isRedeemed()) {
+        if (! $claimed || in_array($claimed->status, ['redeemed', 'used'], true) || $coupon->isRedeemed()) {
             return response()->json([
                 'success' => false,
-                'message' => 'هذا الكوبون تم استخدامه واستبداله مسبقاً.',
-                'error_code' => 'ALREADY_REDEEMED',
+                'message' => $claimed && in_array($claimed->status, ['redeemed', 'used'], true)
+                    ? 'هذا الكوبون تم استخدامه واستبداله مسبقاً.'
+                    : 'هذا الكوبون غير موجود في محفظتك.',
+                'error_code' => $claimed ? 'ALREADY_REDEEMED' : 'NOT_IN_WALLET',
             ], 422);
         }
 
@@ -268,23 +262,30 @@ class QrController extends Controller
         }
 
         // Store and Branch resolution
-        $store = $coupon->store ?? Store::find($staffUser->store_id) ?? Store::first();
+        $store = $coupon->store ?? Store::find($staffUser->store_id);
         $branchId = $validated['branch_id'] ?? null;
         if (! $branchId) {
-            $branch = Branch::where('store_id', $store->id)->first();
+            $branch = $store ? Branch::where('store_id', $store->id)->first() : null;
             $branchId = $branch?->id;
         } else {
             $branch = Branch::where('id', $branchId)->first();
         }
 
-        if (! $branchId) {
-            $branchId = Branch::first()?->id ?? 1;
+        if (! $store || ! $branchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر تحديد المتجر أو الفرع لهذه العملية.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 422);
         }
 
-        // Resolve customer user ID
-        $targetUserId = $extractedUserId ?? $coupon->user_id;
+        $targetUserId = $extractedUserId ?: $coupon->user_id;
         if (! $targetUserId || ! User::where('id', $targetUserId)->exists()) {
-            $targetUserId = User::where('role', 'customer')->value('id') ?? $staffUser->id;
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر تحديد العميل صاحب الكوبون.',
+                'error_code' => 'CUSTOMER_NOT_FOUND',
+            ], 422);
         }
 
         // Determine charged fee

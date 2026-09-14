@@ -149,6 +149,13 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
+  void setLoyaltyPoints(int points) {
+    if (_user == null) return;
+    _user = _user!.copyWith(loyaltyPoints: points);
+    AuthStorage.saveUserData(jsonEncode(_user!.toJson()));
+    notifyListeners();
+  }
+
   /// Registers a new customer strictly in Laravel Database
   Future<bool> register({
     required String name,

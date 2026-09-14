@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../providers/wallet_provider.dart';
 
 /// Customer Scan Merchant QR Screen
@@ -50,37 +50,39 @@ class _CustomerScanMerchantScreenState
     _handleScannedPayload(raw);
   }
 
+  Map<String, dynamic>? _decodeStoreQrPayload(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
+    for (final candidate in [trimmed, trimmed.replaceAll(RegExp(r'\s+'), '')]) {
+      try {
+        final decoded = jsonDecode(utf8.decode(base64Decode(candidate)));
+        if (decoded is Map<String, dynamic>) return decoded;
+      } catch (_) {}
+
+      try {
+        final decoded = jsonDecode(candidate);
+        if (decoded is Map<String, dynamic>) return decoded;
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
   void _handleScannedPayload(String raw) {
-    // Decode store QR payload
-    try {
-      final decoded = String.fromCharCodes(
-        Uri.decodeBytes(
-          raw.codeUnits,
-        ).codeUnits,
-      );
-      _ = decoded;
-    } catch (_) {}
+    if (_processing) return;
 
-    // Try base64 decode to check type
-    try {
-      final bytes = Uri.parse('data:;base64,$raw').data?.contentAsBytes();
-      if (bytes != null) {
-        final jsonStr = String.fromCharCodes(bytes);
-        if (jsonStr.contains('"type":"store"') ||
-            jsonStr.contains('"store_id"')) {
-          setState(() {
-            _scannedQrData = raw;
-            _scannerActive = false;
-          });
-          _showCouponSelectionSheet();
-          return;
-        }
-      }
-    } catch (_) {}
+    final payload = _decodeStoreQrPayload(raw);
+    if (payload == null ||
+        payload['type'] != 'store' ||
+        payload['store_id'] == null) {
+      _showErrorSheet('رمز QR للمتجر غير صالح أو تالف.');
+      return;
+    }
 
-    // Fallback: treat as raw payload and try
     setState(() {
-      _scannedQrData = raw;
+      _scannedQrData = raw.trim();
+      _storeName = payload['store_name'] as String?;
       _scannerActive = false;
     });
     _showCouponSelectionSheet();
@@ -169,7 +171,8 @@ class _CustomerScanMerchantScreenState
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('حسناً', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('حسناً',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -180,13 +183,19 @@ class _CustomerScanMerchantScreenState
 
   Future<void> _redeemCoupon() async {
     if (_scannedQrData == null || _selectedCoupon == null) return;
+
+    final couponIdRaw = _selectedCoupon['coupon_id'];
+    final couponId = couponIdRaw is int
+        ? couponIdRaw
+        : int.tryParse(couponIdRaw?.toString() ?? '');
+    if (couponId == null || couponId <= 0) {
+      _showErrorSheet('معرّف الكوبون غير صالح.');
+      return;
+    }
+
     setState(() => _processing = true);
 
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final couponId = (_selectedCoupon['coupon_id'] ?? _selectedCoupon['id']) as int? ??
-        int.tryParse(
-            (_selectedCoupon['coupon_id'] ?? _selectedCoupon['id']).toString()) ??
-        0;
 
     final result = await walletProvider.redeemCouponAtStore(
       storeQrData: _scannedQrData!,
@@ -206,12 +215,16 @@ class _CustomerScanMerchantScreenState
   void _showSuccessSheet(Map<String, dynamic>? data) {
     final redemption = data?['redemption'] as Map<String, dynamic>? ?? {};
     final customer = data?['customer'] as Map<String, dynamic>? ?? {};
-    final couponTitle = redemption['coupon_title'] ?? _selectedCoupon?['title'] ?? 'كوبون خصم';
-    final discountType = redemption['discount_type'] ?? 'percentage';
-    final discountValue = (redemption['discount_value'] as num?)?.toDouble() ?? 0.0;
-    final pointsAwarded = redemption['points_awarded'] ?? 50;
-    final storeName = redemption['store_name'] ?? _storeName ?? 'المتجر';
-    final newPoints = customer['new_loyalty_points'] ?? 0;
+    final couponTitle = redemption['coupon_title'] as String? ??
+        _selectedCoupon?['title'] as String? ??
+        'كوبون خصم';
+    final discountType = redemption['discount_type'] as String? ?? 'percentage';
+    final discountValue =
+        (redemption['discount_value'] as num?)?.toDouble() ?? 0.0;
+    final pointsAwarded = redemption['points_awarded'] as int?;
+    final storeName =
+        redemption['store_name'] as String? ?? _storeName ?? 'المتجر';
+    final newPoints = customer['new_loyalty_points'] as int?;
 
     final discountLabel = discountType == 'percentage'
         ? '${discountValue.toStringAsFixed(0)}% خصم'
@@ -253,8 +266,7 @@ class _CustomerScanMerchantScreenState
                 decoration: BoxDecoration(
                   color: AppColors.successGreen.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
-                  border:
-                      Border.all(color: AppColors.successGreen, width: 2),
+                  border: Border.all(color: AppColors.successGreen, width: 2),
                 ),
                 child: const Icon(Icons.check_circle_rounded,
                     color: AppColors.successGreen, size: 40),
@@ -285,29 +297,26 @@ class _CustomerScanMerchantScreenState
                 ),
                 child: Column(
                   children: [
-                    _successRow(
-                        Icons.confirmation_number_rounded,
-                        'الكوبون',
-                        couponTitle,
-                        AppColors.primaryAmber),
+                    _successRow(Icons.confirmation_number_rounded, 'الكوبون',
+                        couponTitle, AppColors.primaryAmber),
                     const Divider(color: AppColors.darkSlateBorder, height: 20),
-                    _successRow(
-                        Icons.discount_rounded,
-                        'الخصم المطبق',
-                        discountLabel,
-                        AppColors.successGreen),
-                    const Divider(color: AppColors.darkSlateBorder, height: 20),
-                    _successRow(
-                        Icons.stars_rounded,
-                        'نقاط مكتسبة',
-                        '+$pointsAwarded نقطة',
-                        AppColors.primaryAmber),
-                    const Divider(color: AppColors.darkSlateBorder, height: 20),
-                    _successRow(
-                        Icons.account_balance_wallet_rounded,
-                        'رصيد النقاط',
-                        '$newPoints نقطة',
-                        AppColors.copperOrange),
+                    _successRow(Icons.discount_rounded, 'الخصم المطبق',
+                        discountLabel, AppColors.successGreen),
+                    if (pointsAwarded != null) ...[
+                      const Divider(
+                          color: AppColors.darkSlateBorder, height: 20),
+                      _successRow(Icons.stars_rounded, 'نقاط مكتسبة',
+                          '+$pointsAwarded نقطة', AppColors.primaryAmber),
+                    ],
+                    if (newPoints != null) ...[
+                      const Divider(
+                          color: AppColors.darkSlateBorder, height: 20),
+                      _successRow(
+                          Icons.account_balance_wallet_rounded,
+                          'رصيد النقاط',
+                          '$newPoints نقطة',
+                          AppColors.copperOrange),
+                    ],
                   ],
                 ),
               ),
@@ -327,8 +336,7 @@ class _CustomerScanMerchantScreenState
                 ),
                 child: const Text(
                   'ممتاز! العودة للرئيسية',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ],
@@ -517,7 +525,7 @@ class _CustomerScanMerchantScreenState
                                 style: TextStyle(color: Colors.white)),
                           ],
                         ),
-      ),
+                      ),
                     ),
                 ],
               ),
@@ -574,8 +582,7 @@ class _CustomerScanMerchantScreenState
                               borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text('تحقق',
-                            style:
-                                TextStyle(fontWeight: FontWeight.bold)),
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -719,10 +726,8 @@ class _CouponSelectSheetState extends State<_CouponSelectSheet> {
                                   .withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(
-                                Icons.confirmation_number_rounded,
-                                color: AppColors.primaryAmber,
-                                size: 20),
+                            child: const Icon(Icons.confirmation_number_rounded,
+                                color: AppColors.primaryAmber, size: 20),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -786,8 +791,7 @@ class _CouponSelectSheetState extends State<_CouponSelectSheet> {
               ),
               child: const Text(
                 'تطبيق الخصم والاسترداد',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
             const SizedBox(height: 10),
@@ -804,4 +808,3 @@ class _CouponSelectSheetState extends State<_CouponSelectSheet> {
     );
   }
 }
-
