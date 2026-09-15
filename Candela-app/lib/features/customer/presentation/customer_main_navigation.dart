@@ -55,8 +55,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-      final feedProvider = Provider.of<CustomerFeedProvider>(context, listen: false);
+      final walletProvider =
+          Provider.of<WalletProvider>(context, listen: false);
+      final feedProvider =
+          Provider.of<CustomerFeedProvider>(context, listen: false);
 
       walletProvider.fetchWallet().then((_) {
         if (mounted) {
@@ -239,45 +241,45 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              // Option 2: Show wallet QR pass
-              _qrOption(
-                ctx: ctx,
-                icon: Icons.confirmation_number_rounded,
-                title: 'عرض بطاقات المحفظة',
-                subtitle: 'اعرض QR كوبون للتاجر إذا طلبه منك',
-                color: AppColors.copperOrange,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  final auth =
-                      Provider.of<AuthProvider>(context, listen: false);
-                  final walletProvider =
-                      Provider.of<WalletProvider>(context, listen: false);
-                  final userId = auth.user?.id;
-                  if (userId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('يجب تسجيل الدخول لعرض بطاقات المحفظة.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (walletProvider.activeCoupons.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('لا توجد كوبونات نشطة في محفظتك.'),
-                      ),
-                    );
-                    return;
-                  }
-                  QrCouponBottomSheet.show(
-                    context,
-                    activeCoupons: walletProvider.activeCoupons,
-                    userId: userId.toString(),
-                    initialCoupon: initialCoupon,
-                  );
-                },
-              ),
+              // const SizedBox(height: 12),
+              // // Option 2: Show wallet QR pass
+              // _qrOption(
+              //   ctx: ctx,
+              //   icon: Icons.confirmation_number_rounded,
+              //   title: 'عرض بطاقات المحفظة',
+              //   subtitle: 'اعرض QR كوبون للتاجر إذا طلبه منك',
+              //   color: AppColors.copperOrange,
+              //   onTap: () {
+              //     Navigator.pop(ctx);
+              //     final auth =
+              //         Provider.of<AuthProvider>(context, listen: false);
+              //     final walletProvider =
+              //         Provider.of<WalletProvider>(context, listen: false);
+              //     final userId = auth.user?.id;
+              //     if (userId == null) {
+              //       ScaffoldMessenger.of(context).showSnackBar(
+              //         const SnackBar(
+              //           content: Text('يجب تسجيل الدخول لعرض بطاقات المحفظة.'),
+              //         ),
+              //       );
+              //       return;
+              //     }
+              //     if (walletProvider.activeCoupons.isEmpty) {
+              //       ScaffoldMessenger.of(context).showSnackBar(
+              //         const SnackBar(
+              //           content: Text('لا توجد كوبونات نشطة في محفظتك.'),
+              //         ),
+              //       );
+              //       return;
+              //     }
+              //     QrCouponBottomSheet.show(
+              //       context,
+              //       activeCoupons: walletProvider.activeCoupons,
+              //       userId: userId.toString(),
+              //       initialCoupon: initialCoupon,
+              //     );
+              //   },
+              // ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
@@ -414,7 +416,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                 ? 'فريق خدمة عملاء كانديلا متاح على مدار الساعة'
                                 : 'Candela support team is available 24/7',
                             style: const TextStyle(
-                                fontSize: 12, color: AppColors.darkTextSecondary),
+                                fontSize: 12,
+                                color: AppColors.darkTextSecondary),
                           ),
                         ],
                       ),
@@ -578,8 +581,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   color: isDark ? AppColors.darkSlateCard : Colors.white,
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(28)),
-                  border:
-                      isDark ? Border.all(color: AppColors.darkSlateBorder) : null,
+                  border: isDark
+                      ? Border.all(color: AppColors.darkSlateBorder)
+                      : null,
                 ),
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -611,8 +615,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color:
-                                    isDark ? Colors.white : AppColors.textPrimary,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
                               ),
                             ),
                           ],
@@ -721,8 +726,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                               notif.message,
                                               style: const TextStyle(
                                                 fontSize: 12.5,
-                                                color: AppColors
-                                                    .darkTextSecondary,
+                                                color:
+                                                    AppColors.darkTextSecondary,
                                               ),
                                             ),
                                           ],
@@ -1517,9 +1522,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                         itemCount: stores.length,
                         itemBuilder: (context, index) {
                           final store = stores[index];
-                          final name = store['store_name'] ??
-                              store['name'] ??
-                              '';
+                          final name =
+                              store['store_name'] ?? store['name'] ?? '';
                           final address = (store['address'] ?? '').toString();
                           final distance = store['distance']?.toString();
                           final openHours = store['open_hours']?.toString();
@@ -1661,8 +1665,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                       child: Row(
                                         children: [
                                           if (hasDistance) ...[
-                                            const Icon(
-                                                Icons.near_me_rounded,
+                                            const Icon(Icons.near_me_rounded,
                                                 size: 14,
                                                 color: AppColors.successGreen),
                                             const SizedBox(width: 4),
@@ -2564,8 +2567,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
             final storeOffers = feedProvider.offers
                 .where((o) =>
                     (storeName.isNotEmpty &&
-                        o.storeName.toLowerCase() ==
-                            storeName.toLowerCase()) ||
+                        o.storeName.toLowerCase() == storeName.toLowerCase()) ||
                     (storeId != null &&
                         (o.id == storeId || o.campaignId == storeId)))
                 .toList();
