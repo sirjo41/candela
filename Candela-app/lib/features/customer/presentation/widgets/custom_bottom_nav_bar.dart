@@ -27,7 +27,7 @@ class CustomBottomNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final barColor = isDark ? AppColors.darkSlateSurface : AppColors.darkSlate;
-    final activeColor = AppColors.darkAmberAccent;
+    const activeColor = AppColors.darkAmberAccent;
     const inactiveColor = Colors.white60;
 
     return Directionality(

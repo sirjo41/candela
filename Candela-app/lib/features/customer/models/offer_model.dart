@@ -108,7 +108,7 @@ class OfferModel {
   }
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
-    final storeNameVal = json['store_name'] ?? json['store'] ?? 'Candela Partner';
+    final storeNameVal = json['store_name'] ?? json['store'] ?? '';
     final descVal = json['description'] ?? '';
     final titleVal = json['title'] ?? json['name'] ?? (descVal.toString().isNotEmpty ? descVal.toString() : storeNameVal);
 
@@ -122,18 +122,22 @@ class OfferModel {
       discountValue: json['discount_value'] ?? json['discount_rate'],
     );
 
+    final rawValid = json['valid_until'] ?? json['expires_at'] ?? json['end_date'];
+    DateTime parsedValid = DateTime.now();
+    if (rawValid != null) {
+      parsedValid = DateTime.tryParse(rawValid.toString()) ?? DateTime.now();
+    }
+
     return OfferModel(
       id: json['id']?.toString() ?? '',
       title: titleVal.toString(),
       storeName: storeNameVal.toString(),
-      branchLocation: json['branch_location'] ?? json['location'] ?? 'Downtown Branch',
-      category: json['category'] ?? 'Restaurants',
+      branchLocation: json['branch_location'] ?? json['location'] ?? json['address'] ?? '',
+      category: json['category'] ?? '',
       discountBadge: badgeStr,
       originalPrice: origP,
       discountedPrice: discP,
-      validUntil: json['valid_until'] != null
-          ? DateTime.tryParse(json['valid_until'].toString()) ?? DateTime.now().add(const Duration(days: 3))
-          : DateTime.now().add(const Duration(days: 3)),
+      validUntil: parsedValid,
       storeLogoUrl: json['store_logo_url'] ?? json['store_logo'],
       bannerImageUrl: json['banner_image_url'] ?? json['banner_image'],
       isClaimed: json['is_claimed'] ?? json['claimed'] ?? false,

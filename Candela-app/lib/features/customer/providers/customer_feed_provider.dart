@@ -217,12 +217,34 @@ class CustomerFeedProvider extends ChangeNotifier {
     return false;
   }
 
+  void syncClaimedStatus(Set<String> claimedIds) {
+    if (claimedIds.isEmpty) return;
+    bool changed = false;
+    for (int i = 0; i < _offers.length; i++) {
+      if (!_offers[i].isClaimed && claimedIds.contains(_offers[i].id)) {
+        _offers[i] = _offers[i].copyWith(isClaimed: true);
+        changed = true;
+      }
+    }
+    for (int i = 0; i < _campaigns.length; i++) {
+      if (!_campaigns[i].isClaimed &&
+          (claimedIds.contains(_campaigns[i].id) || claimedIds.contains(_campaigns[i].couponId))) {
+        _campaigns[i] = _campaigns[i].copyWith(isClaimed: true);
+        changed = true;
+      }
+    }
+    if (changed) {
+      notifyListeners();
+    }
+  }
+
   void markOfferClaimed(String offerId) {
     final index = _offers.indexWhere((o) => o.id == offerId);
     if (index != -1) {
       _offers[index] = _offers[index].copyWith(isClaimed: true);
       notifyListeners();
     }
+    markCampaignClaimed(offerId);
   }
 
   void markCampaignClaimed(String campaignId) {

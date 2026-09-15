@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/localization/locale_provider.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -33,8 +36,13 @@ class CustomerMainNavigation extends StatefulWidget {
 }
 
 class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
+  final ApiClient _apiClient = ApiClient();
   int _currentIndex = 0;
   int _walletSubTab = 0; // 0: Active, 1: Used, 2: Expired
+
+  // Support Contacts loaded dynamically from backend API /support
+  Map<String, String?> _supportContacts = {};
+  bool _loadingSupport = false;
 
   // Search controllers for real-time responsive filtering
   final TextEditingController _exploreSearchController =
@@ -47,13 +55,59 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<WalletProvider>(context, listen: false).fetchWallet();
-      final feedProvider =
-          Provider.of<CustomerFeedProvider>(context, listen: false);
-      feedProvider.fetchFeedData();
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      final feedProvider = Provider.of<CustomerFeedProvider>(context, listen: false);
+
+      walletProvider.fetchWallet().then((_) {
+        if (mounted) {
+          final claimedIds = <String>{
+            for (var c in walletProvider.activeCoupons) ...[
+              if (c['id'] != null) c['id'].toString(),
+              if (c['coupon_id'] != null) c['coupon_id'].toString(),
+              if (c['code'] != null) c['code'].toString(),
+            ],
+          };
+          feedProvider.syncClaimedStatus(claimedIds);
+        }
+      });
+
+      feedProvider.fetchFeedData().then((_) {
+        if (mounted) {
+          final claimedIds = <String>{
+            for (var c in walletProvider.activeCoupons) ...[
+              if (c['id'] != null) c['id'].toString(),
+              if (c['coupon_id'] != null) c['coupon_id'].toString(),
+              if (c['code'] != null) c['code'].toString(),
+            ],
+          };
+          feedProvider.syncClaimedStatus(claimedIds);
+        }
+      });
       feedProvider.fetchCampaigns();
       feedProvider.fetchStores();
+      _fetchSupportContacts();
     });
+  }
+
+  Future<void> _fetchSupportContacts() async {
+    _loadingSupport = true;
+    try {
+      final res = await _apiClient.dio.get('/support');
+      if (res.statusCode == 200 && res.data != null) {
+        if (mounted) {
+          setState(() {
+            _supportContacts = {
+              'whatsapp': res.data['whatsapp']?.toString(),
+              'phone': res.data['phone']?.toString(),
+              'email': res.data['email']?.toString(),
+            };
+          });
+        }
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _loadingSupport = false);
+    }
   }
 
   @override
@@ -293,6 +347,15 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     final loc = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final whatsapp = _supportContacts['whatsapp'];
+    final phone = _supportContacts['phone'];
+    final email = _supportContacts['email'];
+
+    final hasWhatsapp = whatsapp != null && whatsapp.trim().isNotEmpty;
+    final hasPhone = phone != null && phone.trim().isNotEmpty;
+    final hasEmail = email != null && email.trim().isNotEmpty;
+    final hasAny = hasWhatsapp || hasPhone || hasEmail;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -333,84 +396,142 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           color: AppColors.darkSlateSurface, size: 24),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          loc.tr('customer_support'),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                isDark ? Colors.white : AppColors.textPrimary,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            loc.tr('customer_support'),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  isDark ? Colors.white : AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                        Text(
-                          loc.isArabic
-                              ? 'فريق خدمة عملاء كانديلا متاح على مدار الساعة'
-                              : 'Candela support team is available 24/7',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.darkTextSecondary),
-                        ),
-                      ],
+                          Text(
+                            loc.isArabic
+                                ? 'فريق خدمة عملاء كانديلا متاح على مدار الساعة'
+                                : 'Candela support team is available 24/7',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.darkTextSecondary),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildSupportOption(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  title: loc.isArabic
-                      ? 'محادثة مباشرة عبر واتساب'
-                      : 'Direct WhatsApp Chat',
-                  subtitle: '+218 91 000 0000',
-                  color: AppColors.successGreen,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(loc.isArabic
-                              ? 'جاري فتح محادثة الدعم عبر واتساب...'
-                              : 'Opening WhatsApp support...')),
-                    );
-                  },
-                ),
+                if (hasWhatsapp) ...[
+                  _buildSupportOption(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: loc.isArabic
+                        ? 'محادثة مباشرة عبر واتساب'
+                        : 'Direct WhatsApp Chat',
+                    subtitle: whatsapp,
+                    color: AppColors.successGreen,
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final cleanWa =
+                          whatsapp.replaceAll(RegExp(r'[^0-9+]'), '');
+                      final uri = Uri.parse('https://wa.me/$cleanWa');
+                      try {
+                        await launchUrl(uri,
+                            mode: LaunchMode.externalApplication);
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(loc.isArabic
+                                  ? 'تعذر فتح تطبيق واتساب ($whatsapp)'
+                                  : 'Could not launch WhatsApp ($whatsapp)'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (hasPhone) ...[
+                  _buildSupportOption(
+                    icon: Icons.phone_in_talk_rounded,
+                    title: loc.isArabic
+                        ? 'الاتصال المباشر بالرقم المجاني'
+                        : 'Phone Call Support',
+                    subtitle: phone,
+                    color: AppColors.darkAmberAccent,
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final cleanPhone =
+                          phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                      final uri = Uri.parse('tel:$cleanPhone');
+                      try {
+                        await launchUrl(uri);
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(loc.isArabic
+                                  ? 'تعذر إجراء الاتصال ($phone)'
+                                  : 'Could not make phone call ($phone)'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (hasEmail) ...[
+                  _buildSupportOption(
+                    icon: Icons.mail_outline_rounded,
+                    title: loc.isArabic
+                        ? 'الدعم الفني عبر البريد الإلكتروني'
+                        : 'Email Support Desk',
+                    subtitle: email,
+                    color: AppColors.royalNavy,
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await Clipboard.setData(ClipboardData(text: email));
+                      final uri = Uri.parse('mailto:$email');
+                      try {
+                        await launchUrl(uri);
+                      } catch (_) {}
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.royalNavy,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            content: Text(loc.isArabic
+                                ? 'تم نسخ بريد الدعم: $email'
+                                : 'Copied support email: $email'),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (!hasAny)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      _loadingSupport
+                          ? (loc.isArabic
+                              ? 'جاري تحميل قنوات الدعم...'
+                              : 'Loading support channels...')
+                          : (loc.isArabic
+                              ? 'قنوات الدعم الفني قيد التحديث حالياً.'
+                              : 'Support channels are currently being updated.'),
+                      style: const TextStyle(
+                          color: AppColors.darkTextSecondary, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 const SizedBox(height: 10),
-                _buildSupportOption(
-                  icon: Icons.phone_in_talk_rounded,
-                  title: loc.isArabic
-                      ? 'الاتصال المباشر بالرقم المجاني'
-                      : 'Toll-Free Phone Call',
-                  subtitle: '800-CANDELA (800-2263352)',
-                  color: AppColors.darkAmberAccent,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(loc.isArabic
-                              ? 'جاري الاتصال بخدمة العملاء...'
-                              : 'Calling customer support...')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                _buildSupportOption(
-                  icon: Icons.mail_outline_rounded,
-                  title: loc.isArabic
-                      ? 'الدعم الفني عبر البريد الإلكتروني'
-                      : 'Email Support Desk',
-                  subtitle: 'support@candela.app',
-                  color: AppColors.royalNavy,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(loc.isArabic
-                              ? 'تم نسخ بريد الدعم: support@candela.app'
-                              : 'Copied support email')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDark
@@ -430,6 +551,194 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showCustomerNotifications(BuildContext context) {
+    final provider = Provider.of<NotificationProvider>(context, listen: false);
+    provider.markAllAsRead();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final loc = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Consumer<NotificationProvider>(
+          builder: (context, notifProvider, _) {
+            final items = notifProvider.notifications;
+            return Directionality(
+              textDirection: loc.textDirection,
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.75,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSlateCard : Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28)),
+                  border:
+                      isDark ? Border.all(color: AppColors.darkSlateBorder) : null,
+                ),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white30 : Colors.black26,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.notifications_active_rounded,
+                                color: AppColors.darkAmberAccent),
+                            const SizedBox(width: 8),
+                            Text(
+                              loc.isArabic
+                                  ? 'إشعارات وتنبيهات كانديلا'
+                                  : 'Candela Notifications',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    isDark ? Colors.white : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.darkAmberAccent
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${items.length} ${loc.isArabic ? 'إشعار' : 'notifications'}',
+                            style: const TextStyle(
+                              color: AppColors.darkAmberAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Expanded(
+                      child: items.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 52,
+                                    color: isDark
+                                        ? Colors.white24
+                                        : Colors.black26,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    loc.isArabic
+                                        ? 'لا توجد إشعارات حالياً'
+                                        : 'No notifications available',
+                                    style: const TextStyle(
+                                      color: AppColors.darkTextSecondary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: items.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final notif = items[index];
+                                return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? AppColors.darkSlateSurface
+                                        : AppColors.surfaceLight,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? AppColors.darkSlateBorder
+                                          : AppColors.borderGrey,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.darkAmberAccent
+                                              .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(
+                                          Icons.campaign_rounded,
+                                          color: AppColors.darkAmberAccent,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              notif.title,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors.textPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              notif.message,
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                color: AppColors
+                                                    .darkTextSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -612,6 +921,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   ),
                                   onPressed: () {
                                     notifProvider.fetchNotifications();
+                                    _showCustomerNotifications(context);
                                   },
                                 ),
                                 if (unread > 0)
@@ -1209,12 +1519,16 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           final store = stores[index];
                           final name = store['store_name'] ??
                               store['name'] ??
-                              'متجر كانديلا';
-                          final address = store['address'] ?? 'طرابلس، ليبيا';
-                          final distance = store['distance'] ?? '1.2 km away';
-                          final openHours =
-                              store['open_hours'] ?? '9:00 AM - 11:00 PM';
-                          final rating = store['rating'] ?? 4.9;
+                              '';
+                          final address = (store['address'] ?? '').toString();
+                          final distance = store['distance']?.toString();
+                          final openHours = store['open_hours']?.toString();
+                          final rating = store['rating'];
+
+                          final hasDistance =
+                              distance != null && distance.isNotEmpty;
+                          final hasOpenHours =
+                              openHours != null && openHours.isNotEmpty;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 14),
@@ -1264,7 +1578,11 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            name,
+                                            name.isNotEmpty
+                                                ? name
+                                                : (loc.isArabic
+                                                    ? 'متجر كانديلا'
+                                                    : 'Candela Store'),
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -1273,56 +1591,62 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                                   : AppColors.textPrimary,
                                             ),
                                           ),
-                                          const SizedBox(height: 2),
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                  Icons.location_on_rounded,
-                                                  size: 14,
-                                                  color: AppColors
-                                                      .darkAmberAccent),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  address,
-                                                  style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: AppColors
-                                                          .darkTextSecondary),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                          if (address.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                    Icons.location_on_rounded,
+                                                    size: 14,
+                                                    color: AppColors
+                                                        .darkAmberAccent),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    address,
+                                                    style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: AppColors
+                                                            .darkTextSecondary),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.darkAmberAccent
-                                            .withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.star_rounded,
-                                              color: AppColors.darkAmberAccent,
-                                              size: 14),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            '$rating',
-                                            style: const TextStyle(
-                                              color: AppColors.darkAmberAccent,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11.5,
+                                              ],
                                             ),
-                                          ),
+                                          ],
                                         ],
                                       ),
                                     ),
+                                    if (rating != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.darkAmberAccent
+                                              .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.star_rounded,
+                                                color:
+                                                    AppColors.darkAmberAccent,
+                                                size: 14),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              '$rating',
+                                              style: const TextStyle(
+                                                color:
+                                                    AppColors.darkAmberAccent,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -1333,33 +1657,45 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.near_me_rounded,
-                                            size: 14,
-                                            color: AppColors.successGreen),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          distance,
-                                          style: const TextStyle(
-                                            color: AppColors.successGreen,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        const Icon(Icons.access_time_rounded,
-                                            size: 14,
-                                            color: AppColors.darkTextSecondary),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          openHours,
-                                          style: const TextStyle(
-                                              color:
-                                                  AppColors.darkTextSecondary,
-                                              fontSize: 11.5),
-                                        ),
-                                      ],
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          if (hasDistance) ...[
+                                            const Icon(
+                                                Icons.near_me_rounded,
+                                                size: 14,
+                                                color: AppColors.successGreen),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              distance,
+                                              style: const TextStyle(
+                                                color: AppColors.successGreen,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                          ],
+                                          if (hasOpenHours) ...[
+                                            const Icon(
+                                                Icons.access_time_rounded,
+                                                size: 14,
+                                                color: AppColors
+                                                    .darkTextSecondary),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                openHours,
+                                                style: const TextStyle(
+                                                    color: AppColors
+                                                        .darkTextSecondary,
+                                                    fontSize: 11.5),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
                                     ),
                                     ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
@@ -1588,9 +1924,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        coupon['store_name'] ??
-                                            coupon['store'] ??
-                                            'Candela Partner Store',
+                                        (coupon['store_name'] ??
+                                                coupon['store'] ??
+                                                '')
+                                            .toString(),
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
@@ -1636,7 +1973,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  coupon['title'] ?? 'قسيمة تخفيض خاصة',
+                                  (coupon['title'] ?? '').toString(),
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
@@ -1650,15 +1987,19 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      '${loc.tr('expires_at')} ${coupon['expires'] ?? '2026-12-31'}',
-                                      style: const TextStyle(
-                                          color: AppColors.darkTextSecondary,
-                                          fontSize: 11.5),
-                                    ),
+                                    if (coupon['expires'] != null ||
+                                        coupon['expires_at'] != null)
+                                      Text(
+                                        '${loc.tr('expires_at')} ${coupon['expires'] ?? coupon['expires_at']}',
+                                        style: const TextStyle(
+                                            color: AppColors.darkTextSecondary,
+                                            fontSize: 11.5),
+                                      )
+                                    else
+                                      const SizedBox.shrink(),
                                     if (coupon['code'] != null)
                                       Text(
-                                        coupon['code'],
+                                        coupon['code'].toString(),
                                         style: const TextStyle(
                                           color: AppColors.darkAmberAccent,
                                           fontWeight: FontWeight.w900,
@@ -1744,7 +2085,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     final theme = Provider.of<ThemeProvider>(context);
     final localeProvider = Provider.of<LocaleProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final points = user?.loyaltyPoints ?? 250;
+    final points = user?.loyaltyPoints ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1794,7 +2135,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user?.name ?? 'عميل كانديلا',
+                            user?.name ??
+                                (loc.isArabic
+                                    ? 'عميل كانديلا'
+                                    : 'Candela Customer'),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -1804,7 +2148,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            user?.email ?? user?.phone ?? 'user@candela.app',
+                            user?.email ?? user?.phone ?? '',
                             style: const TextStyle(
                                 color: AppColors.darkTextSecondary,
                                 fontSize: 13),
@@ -1939,7 +2283,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.dark_mode_rounded,
+                        const Icon(Icons.dark_mode_rounded,
                             color: AppColors.darkAmberAccent, size: 20),
                         const SizedBox(width: 12),
                         Text(
@@ -1980,7 +2324,7 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.translate_rounded,
+                        const Icon(Icons.translate_rounded,
                             color: AppColors.darkAmberAccent, size: 20),
                         const SizedBox(width: 12),
                         Text(
@@ -2205,8 +2549,10 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
   }
 
   void _showStoreCouponsModal(BuildContext context, dynamic store) {
-    final storeName = store['store_name'] ?? store['name'] ?? 'المتجر';
-    final address = store['address'] ?? 'طرابلس، ليبيا';
+    final loc = AppLocalizations.of(context);
+    final storeName = (store['store_name'] ?? store['name'] ?? '').toString();
+    final address = (store['address'] ?? '').toString();
+    final storeId = store['id']?.toString() ?? store['store_id']?.toString();
 
     showModalBottomSheet(
       context: context,
@@ -2217,8 +2563,11 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
           builder: (context, feedProvider, _) {
             final storeOffers = feedProvider.offers
                 .where((o) =>
-                    o.storeName.toLowerCase() ==
-                    storeName.toString().toLowerCase())
+                    (storeName.isNotEmpty &&
+                        o.storeName.toLowerCase() ==
+                            storeName.toLowerCase()) ||
+                    (storeId != null &&
+                        (o.id == storeId || o.campaignId == storeId)))
                 .toList();
 
             return Container(
@@ -2258,18 +2607,23 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              storeName,
+                              storeName.isNotEmpty
+                                  ? storeName
+                                  : (loc.isArabic
+                                      ? 'متجر كانديلا'
+                                      : 'Candela Store'),
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold),
                             ),
-                            Text(
-                              address,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            if (address.isNotEmpty)
+                              Text(
+                                address,
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                           ],
                         ),
                       ),

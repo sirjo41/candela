@@ -37,16 +37,14 @@ class CampaignModel {
   }
 
   factory CampaignModel.fromJson(Map<String, dynamic> json) {
-    final storeNameVal = json['store_name'] ?? json['store'] ?? 'متجر كانديلا الشريك';
+    final storeNameVal = json['store_name'] ?? json['store'] ?? '';
     final descVal = json['description'] ?? json['desc'] ?? '';
     final titleVal = json['title'] ?? json['name'] ?? (descVal.toString().isNotEmpty ? descVal.toString() : storeNameVal);
 
-    DateTime parsedDate;
-    if (json['valid_until'] != null || json['expires_at'] != null || json['end_date'] != null) {
-      final dateStr = (json['valid_until'] ?? json['expires_at'] ?? json['end_date']).toString();
-      parsedDate = DateTime.tryParse(dateStr) ?? DateTime.now().add(const Duration(days: 14));
-    } else {
-      parsedDate = DateTime.now().add(const Duration(days: 14));
+    DateTime parsedDate = DateTime.now();
+    final rawDate = json['valid_until'] ?? json['expires_at'] ?? json['end_date'];
+    if (rawDate != null) {
+      parsedDate = DateTime.tryParse(rawDate.toString()) ?? DateTime.now();
     }
 
     final rawBadge = json['discount'] ?? json['discount_badge'] ?? json['badge'];

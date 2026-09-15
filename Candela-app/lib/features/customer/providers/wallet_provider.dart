@@ -146,13 +146,17 @@ class WalletProvider extends ChangeNotifier {
       }
     }
 
-    if (res == null || (res.statusCode != 200 && res.statusCode != 201) || res.data?['success'] == false) {
-      _errorMessage = res?.data?['message'] ?? 'فشل حجز الكوبون. حاول مرة أخرى.';
+    if (res.statusCode != 200 && res.statusCode != 201 ||
+        (res.data is Map && res.data['success'] == false)) {
+      final dynamic errData = res.data;
+      final dynamic msg = errData is Map ? errData['message'] : null;
+      _errorMessage = msg?.toString() ?? 'فشل حجز الكوبون. حاول مرة أخرى.';
       notifyListeners();
       return false;
     }
 
-    final claimedData = res.data?['claimed_coupon'];
+    final dynamic resData = res.data;
+    final dynamic claimedData = resData is Map ? resData['claimed_coupon'] : null;
     if (claimedData is Map) {
       if (claimedData['id'] != null) _claimedIds.add(claimedData['id'].toString());
       if (claimedData['coupon_id'] != null) _claimedIds.add(claimedData['coupon_id'].toString());

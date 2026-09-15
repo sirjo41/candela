@@ -427,8 +427,17 @@ class _QrCouponBottomSheetState extends State<QrCouponBottomSheet> {
                                       version: QrVersions.auto,
                                       size: 200.0,
                                       backgroundColor: Colors.white,
-                                      foregroundColor: AppColors.darkSlateSurface,
-                                      errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                      eyeStyle: const QrEyeStyle(
+                                        eyeShape: QrEyeShape.square,
+                                        color: AppColors.darkSlateSurface,
+                                      ),
+                                      dataModuleStyle: const QrDataModuleStyle(
+                                        dataModuleShape:
+                                            QrDataModuleShape.square,
+                                        color: AppColors.darkSlateSurface,
+                                      ),
+                                      errorCorrectionLevel:
+                                          QrErrorCorrectLevel.M,
                                     ),
                         ),
                         const SizedBox(height: 14),
