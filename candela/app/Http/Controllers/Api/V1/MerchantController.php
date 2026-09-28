@@ -263,4 +263,62 @@ class MerchantController extends Controller
             'branches'       => $branches,
         ], 200);
     }
+
+    /**
+     * Update store location and basic info (address, latitude, longitude, phone).
+     * Accessible by authenticated merchants to set their store's map pin.
+     */
+    public function updateStore(Request $request): JsonResponse
+    {
+        $merchant = $request->user();
+
+        if (! $merchant) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $store = $merchant->store ?? \App\Models\Store::find($merchant->store_id);
+
+        if (! $store) {
+            return response()->json([
+                'success'    => false,
+                'message'    => 'لم يتم ربط حساب التاجر بمتجر.',
+                'error_code' => 'STORE_NOT_FOUND',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'address'   => ['nullable', 'string', 'max:500'],
+            'latitude'  => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'phone'     => ['nullable', 'string', 'max:30'],
+        ], [
+            'latitude.between'  => 'خط العرض يجب أن يكون بين -90 و 90.',
+            'longitude.between' => 'خط الطول يجب أن يكون بين -180 و 180.',
+        ]);
+
+        $updateData = array_filter([
+            'address'   => $validated['address'] ?? null,
+            'latitude'  => isset($validated['latitude']) ? (float) $validated['latitude'] : null,
+            'longitude' => isset($validated['longitude']) ? (float) $validated['longitude'] : null,
+            'phone'     => $validated['phone'] ?? null,
+        ], fn ($v) => $v !== null);
+
+        if (! empty($updateData)) {
+            $store->update($updateData);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث بيانات المتجر بنجاح.',
+            'store'   => [
+                'id'        => $store->id,
+                'name'      => $store->name,
+                'address'   => $store->address,
+                'latitude'  => $store->latitude,
+                'longitude' => $store->longitude,
+                'phone'     => $store->phone,
+            ],
+        ], 200);
+    }
 }
+

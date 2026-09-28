@@ -808,6 +808,66 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     );
   }
 
+  /// Build a compact "Maps" button that opens the store in Google Maps.
+  Widget _buildMapsButton(Map<dynamic, dynamic> store, dynamic loc) {
+    final lat = store['latitude'] ?? store['lat'];
+    final lng = store['longitude'] ?? store['lng'];
+    final name = (store['store_name'] ?? store['name'] ?? '').toString();
+    final address = (store['address'] ?? '').toString();
+
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green.shade700,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onPressed: () async {
+        Uri mapsUri;
+        if (lat != null && lng != null) {
+          final latD = double.tryParse(lat.toString());
+          final lngD = double.tryParse(lng.toString());
+          if (latD != null && lngD != null) {
+            final label = Uri.encodeComponent(name.isNotEmpty ? name : 'Store');
+            mapsUri = Uri.parse(
+                'https://www.google.com/maps/search/?api=1&query=$latD,$lngD&query_place_id=$label');
+          } else {
+            final query = Uri.encodeComponent(
+                name.isNotEmpty ? name : address.isNotEmpty ? address : 'store');
+            mapsUri = Uri.parse(
+                'https://www.google.com/maps/search/?api=1&query=$query');
+          }
+        } else {
+          final query = Uri.encodeComponent(
+              name.isNotEmpty ? name : address.isNotEmpty ? address : 'store');
+          mapsUri = Uri.parse(
+              'https://www.google.com/maps/search/?api=1&query=$query');
+        }
+        try {
+          final messenger = ScaffoldMessenger.of(context);
+          await launchUrl(mapsUri, mode: LaunchMode.externalApplication);
+          messenger.toString(); // keep reference alive
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(loc.isArabic
+                    ? 'تعذر فتح خرائط جوجل'
+                    : 'Could not open Google Maps'),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
+          }
+        }
+      },
+      icon: const Icon(Icons.map_rounded, size: 14),
+      label: Text(
+        loc.isArabic ? 'خريطة' : 'Maps',
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -1700,6 +1760,9 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                         ],
                                       ),
                                     ),
+                                    // Open in Google Maps button
+                                    _buildMapsButton(store, loc),
+                                    const SizedBox(width: 8),
                                     ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor:
@@ -1712,7 +1775,8 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                             borderRadius:
                                                 BorderRadius.circular(10)),
                                       ),
-                                      onPressed: () => _showStoreCouponsModal(
+                                      onPressed: () =>
+                                          _showStoreCouponsModal(
                                           context, store),
                                       icon: const Icon(
                                           Icons.local_offer_rounded,

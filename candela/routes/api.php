@@ -58,6 +58,7 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard', [MerchantController::class, 'dashboard']);
         Route::get('history', [MerchantController::class, 'history']);
         Route::get('store-qr', [MerchantController::class, 'storeQr']);
+        Route::post('store/update', [MerchantController::class, 'updateStore']);
         Route::post('profile/update', [ProfileController::class, 'update']);
         Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
     });

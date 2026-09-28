@@ -107,6 +107,8 @@ class CustomerController extends Controller
                 'logo' => $logoUrl,
                 'store_logo_url' => $logoUrl,
                 'address' => $address,
+                'latitude' => $primaryBranch?->latitude ?? $store->latitude,
+                'longitude' => $primaryBranch?->longitude ?? $store->longitude,
                 'distance' => $distanceKm !== null ? number_format((float) $distanceKm, 1) . ' km away' : null,
                 'distance_km' => $distanceKm !== null ? round((float) $distanceKm, 2) : null,
                 'open_hours' => $primaryBranch?->open_hours ?? $store->open_hours ?? null,
