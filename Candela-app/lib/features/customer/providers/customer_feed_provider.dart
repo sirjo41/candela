@@ -49,7 +49,7 @@ class CustomerFeedProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   List<OfferModel> get filteredOffers {
-    final activeOffers = _offers.where((o) => o.isActive).toList();
+    final activeOffers = _offers.where((o) => o.isActive && o.remainingTime > Duration.zero).toList();
     if (_selectedCategory == 'الكل' || _selectedCategory == 'All') {
       return activeOffers;
     }

@@ -34,21 +34,34 @@ class OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final remaining = offer.remainingTime;
     final isExpired = remaining == Duration.zero;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final cardBg = isDark ? AppColors.darkSlateCard : AppColors.surfaceLight;
+    final cardBorder = offer.isClaimed
+        ? AppColors.successGreen.withValues(alpha: 0.5)
+        : (isDark ? AppColors.darkSlateBorder : AppColors.borderGrey);
+    final titleColor = isDark ? AppColors.darkTextPrimary : AppColors.darkSlate;
+    final subtitleColor = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final dividerColor = isDark ? AppColors.darkSlateBorder : AppColors.borderGrey;
+    final timerBg = isExpired
+        ? AppColors.errorRed.withValues(alpha: 0.15)
+        : (isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.darkSlate.withValues(alpha: 0.06));
+    final timerColor = isExpired ? AppColors.errorRed : (isDark ? Colors.white70 : AppColors.darkSlate);
+    final badgeBg = isDark ? AppColors.primaryAmber.withValues(alpha: 0.2) : AppColors.primaryAmber.withValues(alpha: 0.15);
+    final badgeTextColor = isDark ? AppColors.primaryAmber : AppColors.darkSlate;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+        color: cardBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: offer.isClaimed
-              ? AppColors.successGreen.withValues(alpha: 0.5)
-              : AppColors.borderGrey,
+          color: cardBorder,
           width: offer.isClaimed ? 1.5 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -92,9 +105,7 @@ class OfferCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isExpired
-                        ? AppColors.errorRed.withValues(alpha: 0.1)
-                        : AppColors.darkSlate.withValues(alpha: 0.06),
+                    color: timerBg,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -102,13 +113,13 @@ class OfferCard extends StatelessWidget {
                       Icon(
                         Icons.timer_outlined,
                         size: 14,
-                        color: isExpired ? AppColors.errorRed : AppColors.darkSlate,
+                        color: timerColor,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         _formatTimer(remaining),
                         style: TextStyle(
-                          color: isExpired ? AppColors.errorRed : AppColors.darkSlate,
+                          color: timerColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                           fontFeatures: const [FontFeature.tabularFigures()],
@@ -129,10 +140,10 @@ class OfferCard extends StatelessWidget {
               children: [
                 Text(
                   offer.storeName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.darkSlate,
+                    color: titleColor,
                     height: 1.2,
                   ),
                 ),
@@ -140,18 +151,18 @@ class OfferCard extends StatelessWidget {
                 // Branch Location
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_on_outlined,
                       size: 15,
-                      color: AppColors.textSecondary,
+                      color: subtitleColor,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         offer.branchLocation,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textSecondary,
+                          color: subtitleColor,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -164,9 +175,9 @@ class OfferCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     offer.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: subtitleColor,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -176,7 +187,7 @@ class OfferCard extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 20, color: AppColors.borderGrey),
+          Divider(height: 20, color: dividerColor),
 
           // Footer: Price Comparison in D.L & Claim Button
           Padding(
@@ -189,7 +200,7 @@ class OfferCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryAmber.withValues(alpha: 0.15),
+                    color: badgeBg,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -198,8 +209,8 @@ class OfferCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         offer.discountBadge,
-                        style: const TextStyle(
-                          color: AppColors.darkSlate,
+                        style: TextStyle(
+                          color: badgeTextColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 13.5,
                         ),

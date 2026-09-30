@@ -33,7 +33,7 @@ class OfferController extends Controller
             ->withinDistance($latitude, $longitude, $radiusKm);
 
         if (! $request->boolean('include_inactive')) {
-            $query->where('is_active', true);
+            $query->where('is_active', true)->where('valid_until', '>', now());
         }
 
         $offers = $query->orderBy('created_at', 'desc')->get();

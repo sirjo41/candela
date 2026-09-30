@@ -442,7 +442,7 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppColors.scaffoldBackground,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: AppColors.darkSlate,
           elevation: 0,
