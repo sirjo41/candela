@@ -178,15 +178,11 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
         $points = (int) ($user->loyalty_points ?? 0);
-        $tier = $points >= 500 ? 'المستوى الذهبي' : 'المستوى الفضي';
-        $pointsNeeded = $points >= 500 ? 0 : (500 - $points);
 
         return response()->json([
             'success' => true,
             'data' => [
                 'loyalty_points' => $points,
-                'tier' => $tier,
-                'tier_subtitle' => $points >= 500 ? 'لقد وصلت للمستوى الأعلى!' : "تبقى {$pointsNeeded} نقطة للوصول للمستوى الذهبي!",
                 'points_progress' => "{$points} / 500",
                 'progress_ratio' => min(1.0, $points / 500.0),
                 'earn_methods' => [

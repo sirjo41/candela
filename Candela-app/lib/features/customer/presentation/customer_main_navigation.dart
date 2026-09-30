@@ -2152,7 +2152,6 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
     final theme = Provider.of<ThemeProvider>(context);
     final localeProvider = Provider.of<LocaleProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final points = user?.loyaltyPoints ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -2220,98 +2219,13 @@ class _CustomerMainNavigationState extends State<CustomerMainNavigation> {
                                 color: AppColors.darkTextSecondary,
                                 fontSize: 13),
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.darkAmberAccent
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              points >= 500
-                                  ? loc.tr('tier_gold')
-                                  : loc.tr('tier_silver'),
-                              style: const TextStyle(
-                                color: AppColors.darkAmberAccent,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Loyalty Rewards Gold Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.darkAmberAccent, AppColors.copperOrange],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.darkAmberAccent.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          loc.tr('loyalty_center'),
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15),
-                        ),
-                        const Icon(Icons.star_rounded,
-                            color: Colors.white, size: 24),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '$points',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900),
-                    ),
-                    Text(
-                      loc.tr('candela_points'),
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: (points / 500.0).clamp(0.0, 1.0),
-                        backgroundColor: Colors.white30,
-                        valueColor:
-                            const AlwaysStoppedAnimation<Color>(Colors.white),
-                        minHeight: 6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
               // Profile & Security Actions
               _buildSectionHeader(loc.isArabic

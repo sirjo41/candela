@@ -450,22 +450,6 @@ class _ManageOffersScreenState extends State<ManageOffersScreen> with SingleTick
             'إدارة العروض والتحليلات',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryAmber,
-                  foregroundColor: AppColors.darkSlate,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                ),
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('عرض جديد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                onPressed: _openLaunchOffer,
-              ),
-            ),
-          ],
           bottom: TabBar(
             controller: _tabController,
             indicatorColor: AppColors.primaryAmber,

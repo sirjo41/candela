@@ -20,17 +20,16 @@ class _HeroPromoBannerState extends State<HeroPromoBanner> {
 
   final List<Map<String, dynamic>> _bannerItems = [
     {
-      'type': 'silver_tier',
-      'title': 'المستوى الفضي',
-      'points_text': '250 / 500 نقطة',
-      'subtitle': 'تبقى 250 نقطة للوصول للمستوى الذهبي!',
-      'progress': 0.5,
-    },
-    {
       'type': 'exclusive_offer',
       'tag': 'عرض حصري',
       'title': 'خصومات تصل إلى 50%',
-      'subtitle': 'على كافة الملابس الشتوية',
+      'subtitle': 'على كافة الملابس الشتوية والمنتجات المميزة',
+    },
+    {
+      'type': 'exclusive_offer',
+      'tag': 'عروض كانديلا',
+      'title': 'مكافآت ونقاط هدايا',
+      'subtitle': 'جمع النقاط عند كل عملية عمل واستبدلها بكوبونات',
     },
   ];
 
@@ -56,96 +55,6 @@ class _HeroPromoBannerState extends State<HeroPromoBanner> {
             itemCount: _bannerItems.length,
             itemBuilder: (context, index) {
               final item = _bannerItems[index];
-
-              if (item['type'] == 'silver_tier') {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFE86014),
-                        Color(0xFFC84605),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFC84605).withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  item['title'],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  item['points_text'],
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Progress Bar
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: item['progress'],
-                                minHeight: 7,
-                                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              item['subtitle'],
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 11.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.workspace_premium_rounded,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
 
               // Exclusive Offer Card
               return Container(
