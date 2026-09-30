@@ -68,7 +68,7 @@ class _MerchantMainNavigationState extends State<MerchantMainNavigation> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppColors.scaffoldBackground,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: AppColors.darkSlate,
           elevation: 0,

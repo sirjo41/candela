@@ -299,7 +299,7 @@ class MerchantDashboardScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppColors.scaffoldBackground,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Consumer<MerchantProvider>(
           builder: (context, merchant, _) {
             return RefreshIndicator(
