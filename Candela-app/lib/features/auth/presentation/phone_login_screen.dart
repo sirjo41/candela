@@ -74,6 +74,20 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 380;
+    final isShortScreen = screenHeight < 700;
+
+    final horizontalPadding = isSmallScreen ? 14.0 : 20.0;
+    final verticalPadding = isShortScreen ? 16.0 : 32.0;
+    final cardPadding = isSmallScreen ? 18.0 : 28.0;
+    final logoSize = isSmallScreen ? 36.0 : 48.0;
+    final titleFontSize = isSmallScreen ? 22.0 : 28.0;
+    final subtitleFontSize = isSmallScreen ? 12.0 : 14.0;
+    final logoPadding = isSmallScreen ? 12.0 : 16.0;
+    final logoBottomGap = isShortScreen ? 8.0 : 12.0;
+    final subtitleBottomGap = isShortScreen ? 16.0 : 28.0;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
@@ -94,7 +108,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 460),
                 child: Column(
@@ -102,7 +116,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                   children: [
                     // Brand Logo & Title Header
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(logoPadding),
                       decoration: BoxDecoration(
                         color: AppColors.primaryAmber.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
@@ -111,32 +125,32 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                                 AppColors.primaryAmber.withValues(alpha: 0.4),
                             width: 2),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.local_fire_department_rounded,
-                        size: 48,
+                        size: logoSize,
                         color: AppColors.primaryAmber,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: logoBottomGap),
+                    Text(
                       'CandelaSmart',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                         letterSpacing: 1.0,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Loyalty & Digital Dynamic QR Pass',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: subtitleFontSize,
                         color: AppColors.primaryAmber,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    SizedBox(height: subtitleBottomGap),
 
                     // Auth Card Container
                     Card(
@@ -146,7 +160,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(28.0),
+                        padding: EdgeInsets.all(cardPadding),
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -403,12 +417,17 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    const Text(
-                                      'Remember Me (Stay logged in across reloads)',
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textSecondary,
+                                    Flexible(
+                                      child: Text(
+                                        isSmallScreen
+                                            ? 'Remember Me'
+                                            : 'Remember Me (Stay logged in)',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 11.5 : 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],

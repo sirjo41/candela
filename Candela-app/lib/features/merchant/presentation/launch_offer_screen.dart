@@ -142,6 +142,9 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
   @override
   Widget build(BuildContext context) {
     final merchant = Provider.of<MerchantProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    final formPadding = isSmallScreen ? 14.0 : 20.0;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -149,14 +152,14 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: AppColors.darkSlate,
-          title: const Text(
+          title: Text(
             'إطلاق عرض جديد',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: isSmallScreen ? 16 : 19),
           ),
           elevation: 0,
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(formPadding),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 800),
@@ -186,9 +189,11 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                     // Offer Title Input
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'عنوان العرض (مثال: اشتري 2 واحصل على 1 مجاناً)',
-                        prefixIcon: Icon(Icons.title_rounded, color: AppColors.darkSlate),
+                      decoration: InputDecoration(
+                        labelText: isSmallScreen
+                            ? 'عنوان العرض'
+                            : 'عنوان العرض (مثال: اشتري 2 واحصل على 1 مجاناً)',
+                        prefixIcon: const Icon(Icons.title_rounded, color: AppColors.darkSlate),
                       ),
                       validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال عنوان العرض' : null,
                     ),
@@ -196,7 +201,7 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
 
                     // Quick Preset Deal Buttons
                     SizedBox(
-                      height: 34,
+                      height: 36,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: _quickPresetDeals.length,
@@ -207,7 +212,7 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                             child: ActionChip(
                               backgroundColor: AppColors.darkSlate.withValues(alpha: 0.06),
                               side: const BorderSide(color: AppColors.borderGrey),
-                              label: Text(preset, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.darkSlate)),
+                              label: Text(preset, style: TextStyle(fontSize: isSmallScreen ? 10 : 11, fontWeight: FontWeight.w600, color: AppColors.darkSlate)),
                               onPressed: () {
                                 _titleController.text = preset;
                               },
@@ -255,27 +260,30 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                     // Campaign Participation Dropdown Selector (Optional or Null)
                     DropdownButtonFormField<int?>(
                       initialValue: _form.campaignId,
-                      decoration: const InputDecoration(
-                        labelText: 'المشاركة في حملة ترويجية (اختياري / Null)',
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: isSmallScreen
+                            ? 'حملة ترويجية (اختياري)'
+                            : 'المشاركة في حملة ترويجية (اختياري / Null)',
                         hintText: 'اختر حملة لتضمين العرض بها أو اتركه فارغاً',
-                        prefixIcon: Icon(Icons.campaign_rounded, color: AppColors.copperOrange),
+                        prefixIcon: const Icon(Icons.campaign_rounded, color: AppColors.copperOrange),
                       ),
                       items: const [
                         DropdownMenuItem<int?>(
                           value: null,
-                          child: Text('بدون مشاركة في حملة (عرض مستقل)', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                          child: Text('بدون مشاركة في حملة (عرض مستقل)', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
                         ),
                         DropdownMenuItem<int?>(
                           value: 1,
-                          child: Text('مهرجان الصيف للتسوق 2026 ✦ (حملة نشطة)', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold)),
+                          child: Text('مهرجان الصيف للتسوق 2026 ✦', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                         ),
                         DropdownMenuItem<int?>(
                           value: 2,
-                          child: Text('حملة العودة للمدارس والجامعات', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold)),
+                          child: Text('حملة العودة للمدارس والجامعات', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                         ),
                         DropdownMenuItem<int?>(
                           value: 3,
-                          child: Text('مهرجان التخفيضات الكبرى', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold)),
+                          child: Text('مهرجان التخفيضات الكبرى', style: TextStyle(color: AppColors.darkSlate, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                         ),
                       ],
                       onChanged: (val) {
@@ -456,34 +464,64 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                       onTap: () => _selectExpiryDate(context),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 12 : 16, vertical: 14),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.borderGrey),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.calendar_today_rounded, color: AppColors.darkSlate, size: 18),
-                                SizedBox(width: 10),
-                                Text(
-                                  'تاريخ انتهاء صلاحية العرض',
-                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '${_form.endDate.year}-${_form.endDate.month.toString().padLeft(2, '0')}-${_form.endDate.day.toString().padLeft(2, '0')}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryAmberDark,
+                        child: isSmallScreen
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today_rounded, color: AppColors.darkSlate, size: 18),
+                                      const SizedBox(width: 10),
+                                      const Expanded(
+                                        child: Text(
+                                          'تاريخ انتهاء صلاحية العرض',
+                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    child: Text(
+                                      '${_form.endDate.year}-${_form.endDate.month.toString().padLeft(2, '0')}-${_form.endDate.day.toString().padLeft(2, '0')}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryAmberDark,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.calendar_today_rounded, color: AppColors.darkSlate, size: 18),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'تاريخ انتهاء صلاحية العرض',
+                                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    '${_form.endDate.year}-${_form.endDate.month.toString().padLeft(2, '0')}-${_form.endDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primaryAmberDark,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -531,12 +569,15 @@ class _LaunchOfferScreenState extends State<LaunchOfferScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
                             onPressed: _submitOffer,
-                            child: const Text(
-                              'إطلاق العرض الآن وتطبيقه للعملاء',
-                              style: TextStyle(
+                            child: Text(
+                              isSmallScreen
+                                  ? 'إطلاق العرض الآن'
+                                  : 'إطلاق العرض الآن وتطبيقه للعملاء',
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                   ],
